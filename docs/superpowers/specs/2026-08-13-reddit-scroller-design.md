@@ -10,11 +10,11 @@ monitor. The feed should scroll on its own at a controllable speed, and it shoul
 possible to pause, change speed, open the post currently in view, and return to the feed
 — all without alt-tabbing, touching the mouse, or leaving the game.
 
-A previous attempt (`C:\Development\rosch43`) drove a *separate* Playwright-launched
-Firefox and copied cookies and localStorage out of the real Firefox profile to stay
-logged in. That sync layer was the bulk of the complexity and existed only because the
-automated browser was not the user's browser. This design removes that problem by running
-inside the browser the user already uses.
+The obvious approach — driving a *separate* automated browser — forces cookie and
+localStorage syncing out of the real Firefox profile just to stay logged in. That sync
+layer is the bulk of the complexity, and it exists only because the automated browser is
+not the user's browser. This design avoids the problem entirely by running inside the
+browser the user already uses.
 
 ## Goals
 

@@ -1,0 +1,17 @@
+{
+  "port": 8765,
+  "default_speed": 90,
+  "speed_step": 15,
+  "speed_min": 15,
+  "speed_max": 600,
+  "focus_line": 0.25,
+  "bindings": {
+    "toggle": "numpad0",
+    "open": "numpad_enter",
+    "back": "numpad_dot",
+    "faster": "numpad_plus",
+    "slower": "numpad_minus",
+    "prev": "numpad8",
+    "next": "numpad2"
+  }
+}

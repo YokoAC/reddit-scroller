@@ -11,6 +11,9 @@ __pycache__/
 # Node
 node_modules/
 
+# Agent scratch
+.superpowers/
+
 # Editors / OS
 .vscode/
 .idea/

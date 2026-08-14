@@ -72,3 +72,74 @@ def test_an_event_without_the_keypad_attribute_is_treated_as_non_keypad():
     hk, fired = listener()
     assert hk.handle_press(SimpleNamespace(scan_code=82)) is None
     assert fired == []
+
+
+# --- Single-dispatcher regression tests -------------------------------------
+#
+# These cover a bug that unit-testing handle_press/handle_release directly
+# could never catch, because it lived in how two keyboard-library hooks
+# compose rather than in either handler.
+#
+# keyboard's dispatch loop (_generic.py invoke_handlers) stops as soon as a
+# handler returns truthy. keyboard.on_press(cb) registers
+# `lambda e: e.event_type == KEY_UP or cb(e)`, which returns True on every
+# key-up -- halting the loop before a separately registered on_release hook
+# ever runs. The release handler never fired, _held never cleared, and each
+# key worked exactly once per daemon lifetime.
+
+
+def event(scan_code: int, event_type: str, is_keypad: bool = True) -> SimpleNamespace:
+    return SimpleNamespace(
+        scan_code=scan_code, is_keypad=is_keypad, name=None, event_type=event_type
+    )
+
+
+def invoke_handlers(handlers, ev):
+    """Faithful copy of keyboard._generic.GenericListener.invoke_handlers."""
+    for handler in handlers:
+        if handler(ev):
+            return 1
+    return None
+
+
+def test_the_dispatcher_routes_a_press_to_the_command():
+    hk, fired = listener()
+    hk.handle_event(event(82, "down"))
+    assert fired == ["toggle"]
+
+
+def test_the_dispatcher_routes_a_release_so_the_key_can_fire_again():
+    hk, fired = listener()
+    hk.handle_event(event(82, "down"))
+    hk.handle_event(event(82, "up"))
+    hk.handle_event(event(82, "down"))
+    assert fired == ["toggle", "toggle"]
+
+
+def test_the_dispatcher_never_returns_truthy():
+    # A truthy return would halt keyboard's handler loop for every other
+    # listener on the system -- and, if we ever register a second hook, for
+    # ourselves.
+    hk, _ = listener()
+    assert not hk.handle_event(event(82, "down"))
+    assert not hk.handle_event(event(82, "up"))
+    assert not hk.handle_event(event(999, "down"))
+
+
+def test_a_repeated_key_survives_the_libraries_dispatch_loop():
+    # The end-to-end regression: our handlers, dispatched exactly the way
+    # keyboard does it, must fire on every real press.
+    hk, fired = listener()
+    handlers = [hk.handle_event]
+    for event_type in ("down", "up", "down", "up", "down"):
+        invoke_handlers(handlers, event(82, event_type))
+    assert fired == ["toggle", "toggle", "toggle"]
+
+
+def test_auto_repeat_is_still_collapsed_through_the_dispatcher():
+    hk, fired = listener()
+    for _ in range(5):
+        hk.handle_event(event(82, "down"))
+    hk.handle_event(event(82, "up"))
+    hk.handle_event(event(82, "down"))
+    assert fired == ["toggle", "toggle"]

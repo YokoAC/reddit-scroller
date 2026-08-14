@@ -39,13 +39,27 @@ class HotkeyListener:
     def handle_release(self, event) -> None:
         self._held.discard(self._identity(event))
 
+    def handle_event(self, event) -> None:
+        """Route one raw key event. Always returns None.
+
+        This must stay a single hook rather than a keyboard.on_press plus a
+        keyboard.on_release pair. keyboard's dispatch loop stops at the first
+        handler returning truthy, and its on_press wrapper returns True for
+        every key-up -- which swallowed the release before a separately
+        registered on_release hook could see it. _held then never cleared and
+        each key fired exactly once per daemon lifetime.
+
+        Returning None also keeps us from suppressing anyone else's handler.
+        """
+        if getattr(event, "event_type", None) == "up":
+            self.handle_release(event)
+        else:
+            self.handle_press(event)
+
     def start(self) -> None:
         import keyboard
 
-        self._hooks = [
-            keyboard.on_press(self.handle_press, suppress=False),
-            keyboard.on_release(self.handle_release, suppress=False),
-        ]
+        self._hooks = [keyboard.hook(self.handle_event, suppress=False)]
 
     def stop(self) -> None:
         import keyboard

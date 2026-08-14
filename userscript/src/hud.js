@@ -157,7 +157,9 @@ export class Hud {
     n.status.textContent = view.status;
     n.status.className = `rs-status ${view.statusClass}`;
     n.daemon.textContent = `● ${view.daemon}`;
-    n.daemon.className = view.daemonClass;
+    // Keep the rs-daemon marker: _collect() looks the node up by it, so
+    // dropping it here would break a later mount() that adopts this panel.
+    n.daemon.className = `rs-daemon ${view.daemonClass}`;
     n.speed.textContent = view.speed;
     n.bar.textContent = view.bar;
     n.mode.textContent = view.mode;

@@ -2377,12 +2377,16 @@ describe("Hud", () => {
   });
 
   it("a second instance adopts an existing panel and can still render it", () => {
-    new Hud(document).mount();
+    const first = new Hud(document);
+    first.mount();
+    // Render before adopting: render() rewrites class attributes, so a
+    // pristine panel would not exercise the case that actually breaks.
+    first.render(STATE);
     const second = new Hud(document);
     second.mount();
-    second.render(STATE);
+    second.render({ ...STATE, speed: 300 });
     expect(document.querySelectorAll(`#${HUD_ID}`)).toHaveLength(1);
-    expect(document.querySelector(`#${HUD_ID}`).textContent).toContain("90 px/s");
+    expect(document.querySelector(`#${HUD_ID}`).textContent).toContain("300 px/s");
   });
 
   it("writes the state into the panel", () => {
@@ -2589,7 +2593,9 @@ export class Hud {
     n.status.textContent = view.status;
     n.status.className = `rs-status ${view.statusClass}`;
     n.daemon.textContent = `● ${view.daemon}`;
-    n.daemon.className = view.daemonClass;
+    // Keep the rs-daemon marker: _collect() looks the node up by it, so
+    // dropping it here would break a later mount() that adopts this panel.
+    n.daemon.className = `rs-daemon ${view.daemonClass}`;
     n.speed.textContent = view.speed;
     n.bar.textContent = view.bar;
     n.mode.textContent = view.mode;

@@ -1553,17 +1553,20 @@ describe("ScrollEngine", () => {
     const { engine, moves } = makeEngine({ speed: 100 });
     engine.start();
     engine.tick(1000);
-    engine.tick(1500); // 0.5s at 100 px/s
-    expect(moves).toEqual([50]);
+    engine.tick(1050); // 0.05s at 100 px/s — under the MAX_FRAME_SECONDS cap
+    expect(moves).toEqual([5]);
   });
 
   it("accumulates sub-pixel remainders instead of dropping them", () => {
-    const { engine, moves } = makeEngine({ speed: 15 });
+    // 32 px/s at 1/64 s per frame is exactly 0.5 px per frame. Both operands
+    // are binary-exact, so this asserts the accumulator's behaviour without
+    // floating-point drift deciding the outcome: whole pixels come out every
+    // second frame and nothing is lost to truncation.
+    const { engine, moves } = makeEngine({ speed: 32 });
     engine.start();
     engine.tick(0);
-    for (let i = 1; i <= 10; i += 1) engine.tick(i * 20); // 10 frames of 20ms
-    const total = moves.reduce((a, b) => a + b, 0);
-    expect(total).toBe(3); // 15 px/s over 0.2s
+    for (let i = 1; i <= 4; i += 1) engine.tick(i * 15.625);
+    expect(moves).toEqual([1, 1]);
     expect(moves.every(Number.isInteger)).toBe(true);
   });
 

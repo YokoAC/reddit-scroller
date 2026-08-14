@@ -17,6 +17,23 @@ from .server import create_app
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.json"
 
 
+class PortUnavailableError(OSError):
+    """Raised when the daemon's loopback port cannot be bound.
+
+    Subclasses OSError so callers that only care "did the bind fail" can
+    still catch OSError, while main() can catch this specific type to print
+    its friendly message without mislabeling unrelated OSErrors (e.g. from
+    hotkey hook teardown) as bind failures.
+
+    Carries the port and the original OSError that triggered it.
+    """
+
+    def __init__(self, port: int, original: OSError) -> None:
+        super().__init__(f"could not bind 127.0.0.1:{port}: {original}")
+        self.port = port
+        self.original = original
+
+
 def log(message: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {message}", flush=True)
 
@@ -35,9 +52,9 @@ async def run(config: Config, listener_factory=HotkeyListener) -> None:
     site = web.TCPSite(runner, "127.0.0.1", config.port)
     try:
         await site.start()
-    except OSError:
+    except OSError as exc:
         await runner.cleanup()
-        raise
+        raise PortUnavailableError(config.port, exc) from exc
 
     # Only hook the keyboard once the port is ours — a failed start must not
     # leave a global hook installed.
@@ -52,8 +69,10 @@ async def run(config: Config, listener_factory=HotkeyListener) -> None:
     try:
         await asyncio.Event().wait()
     finally:
-        listener.stop()
-        await runner.cleanup()
+        try:
+            listener.stop()
+        finally:
+            await runner.cleanup()
 
 
 def main() -> int:
@@ -64,15 +83,15 @@ def main() -> int:
         return 1
 
     if not CONFIG_PATH.exists():
-        log(f"no {CONFIG_PATH.name} found — using defaults")
+        log(f"no {CONFIG_PATH.name} found - using defaults")
 
     try:
         asyncio.run(run(config))
     except KeyboardInterrupt:
         log("stopped")
-    except OSError as exc:
+    except PortUnavailableError as exc:
         print(
-            f"could not bind 127.0.0.1:{config.port} ({exc}). "
+            f"could not bind 127.0.0.1:{exc.port} ({exc.original}). "
             "Another daemon may already be running, or change 'port' in config.json.",
             file=sys.stderr,
         )

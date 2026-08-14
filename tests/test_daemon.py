@@ -3,7 +3,9 @@ from dataclasses import replace
 
 import aiohttp
 import pytest
+from aiohttp import web
 
+from reddit_scroller import __main__ as daemon
 from reddit_scroller.__main__ import run
 from reddit_scroller.config import Config
 
@@ -82,3 +84,56 @@ async def test_the_port_being_busy_raises_a_clear_error():
         first.cancel()
         with pytest.raises(asyncio.CancelledError):
             await first
+
+
+async def test_cleanup_runs_when_listener_stop_raises(monkeypatch):
+    """runner.cleanup() must still run even if listener.stop() raises, or the
+    AppRunner (and its listening socket) leaks on an otherwise-normal Ctrl+C
+    shutdown. A FakeListener whose stop() raises stands in for a real hook
+    teardown failure (keyboard.unhook() has no internal error handling)."""
+    cleanup_calls = []
+    original_cleanup = web.AppRunner.cleanup
+
+    async def tracking_cleanup(self):
+        cleanup_calls.append(True)
+        await original_cleanup(self)
+
+    monkeypatch.setattr(web.AppRunner, "cleanup", tracking_cleanup)
+
+    class RaisingListener(FakeListener):
+        def stop(self):
+            super().stop()
+            raise RuntimeError("hook teardown failed")
+
+    config = replace(Config.default(), port=8797)
+    task = asyncio.create_task(run(config, listener_factory=RaisingListener))
+    await asyncio.sleep(0.2)
+
+    # Cancelling stands in for Ctrl+C: it triggers the shutdown `finally`.
+    # listener.stop()'s RuntimeError takes over from the CancelledError as it
+    # propagates, so the task ends in RuntimeError rather than being cancelled.
+    task.cancel()
+    with pytest.raises(RuntimeError, match="hook teardown failed"):
+        await task
+
+    assert cleanup_calls, "runner.cleanup() must run even when listener.stop() raises"
+
+
+def test_main_does_not_report_a_non_bind_oserror_as_a_bind_failure(
+    monkeypatch, capsys
+):
+    """An OSError that escapes run() for a reason other than the port bind
+    (e.g. from hook teardown during shutdown) must propagate unchanged, not
+    get mislabeled as 'could not bind ... another daemon may already be
+    running'."""
+
+    async def raising_run(config, listener_factory=None):
+        raise OSError("hook teardown failed")
+
+    monkeypatch.setattr(daemon, "run", raising_run)
+
+    with pytest.raises(OSError, match="hook teardown failed"):
+        daemon.main()
+
+    captured = capsys.readouterr()
+    assert "could not bind" not in captured.err

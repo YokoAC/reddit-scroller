@@ -2942,7 +2942,10 @@ export class Transport {
     this._cursor = 0;
     this._backoff = 0;
     this._running = false;
-    this._connected = false;
+    // null means "not yet known". Starting at false would make the first
+    // failure a no-op edge, so onConnectionChange would never report the
+    // daemon being down at startup.
+    this._connected = null;
     this._settings = null;
   }
 

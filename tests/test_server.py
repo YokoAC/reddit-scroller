@@ -93,3 +93,28 @@ async def test_an_invalid_json_state_body_is_rejected(client):
         "/state", data="{not json", headers={"Content-Type": "application/json"}
     )
     assert resp.status == 400
+
+
+async def test_a_cursor_ahead_of_the_bus_resyncs_instead_of_stalling(client, bus):
+    # A restarted daemon starts its sequence at 0 again while a long-lived
+    # browser tab still holds a cursor from the previous session. Without a
+    # resync the tab silently ignores every command until the new sequence
+    # catches up to its stale cursor.
+    bus.append("toggle")
+    body = await (await client.get("/events", params={"cursor": "99"})).json()
+    assert body == {"cursor": 1, "events": []}
+
+    # Having resynced, the tab sees the next command immediately.
+    bus.append("faster")
+    body = await (await client.get("/events", params={"cursor": "1"})).json()
+    assert [e["command"] for e in body["events"]] == ["faster"]
+
+
+async def test_a_resync_does_not_replay_commands_from_the_old_session(client, bus):
+    # Snapping the stale cursor back to 0 would re-fire whatever is still in
+    # the log -- including 'open', which navigates the page.
+    bus.append("open")
+    bus.append("back")
+    body = await (await client.get("/events", params={"cursor": "42"})).json()
+    assert body["events"] == []
+    assert body["cursor"] == 2

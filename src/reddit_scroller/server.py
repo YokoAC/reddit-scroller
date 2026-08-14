@@ -23,6 +23,11 @@ async def _health(request: web.Request) -> web.Response:
 async def _events(request: web.Request) -> web.Response:
     bus: EventBus = request.app["bus"]
     cursor = _cursor_from(request)
+    # A cursor ahead of our own means the client outlived a previous daemon,
+    # whose sequence started over at 0. Snap it to the present rather than
+    # stalling until the new sequence catches up. Resetting to 0 instead would
+    # replay the log at it -- including 'open', which navigates the page.
+    cursor = min(cursor, bus.cursor)
     events = await bus.wait_for(cursor, timeout=request.app["poll_timeout"])
     new_cursor = events[-1].seq if events else cursor
     return web.json_response(

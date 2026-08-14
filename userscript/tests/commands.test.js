@@ -74,3 +74,41 @@ describe("commandForKeyCode", () => {
     expect(commandForKeyCode("ArrowDown")).toBeNull();
   });
 });
+
+describe("the new commands", () => {
+  it("flips direction in either mode", () => {
+    expect(resolveAction("reverse", "feed")).toBe("flipDirection");
+    expect(resolveAction("reverse", "thread")).toBe("flipDirection");
+  });
+
+  it("toggles help in either mode", () => {
+    expect(resolveAction("help", "feed")).toBe("toggleHelp");
+    expect(resolveAction("help", "thread")).toBe("toggleHelp");
+  });
+
+  it("maps their keys for the in-page fallback", () => {
+    expect(commandForKeyCode("Numpad5")).toBe("reverse");
+    expect(commandForKeyCode("NumpadMultiply")).toBe("help");
+  });
+});
+
+describe("resolveAction covers every command in both modes", () => {
+  // The earlier suite left two cells unasserted; enumerate the whole table so
+  // a future command cannot be added to one mode and forgotten in the other.
+  const EXPECTED = {
+    toggle: ["toggleScroll", "toggleScroll"],
+    faster: ["speedUp", "speedUp"],
+    slower: ["speedDown", "speedDown"],
+    open: ["openSelected", "noop"],
+    back: ["noop", "goBack"],
+    next: ["selectNext", "pageDown"],
+    prev: ["selectPrev", "pageUp"],
+    reverse: ["flipDirection", "flipDirection"],
+    help: ["toggleHelp", "toggleHelp"],
+  };
+
+  it.each(Object.entries(EXPECTED))("%s", (command, [feed, thread]) => {
+    expect(resolveAction(command, "feed")).toBe(feed);
+    expect(resolveAction(command, "thread")).toBe(thread);
+  });
+});

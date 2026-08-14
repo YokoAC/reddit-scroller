@@ -168,3 +168,61 @@ describe("ScrollEngine", () => {
     expect(moves).toEqual([18]);
   });
 });
+
+describe("ScrollEngine direction", () => {
+  it("scrolls downward by default", () => {
+    const { engine, moves } = makeEngine({ speed: 100 });
+    expect(engine.direction).toBe(1);
+    engine.start();
+    engine.tick(1000);
+    engine.tick(1050);
+    expect(moves).toEqual([5]);
+  });
+
+  it("scrolls upward once flipped", () => {
+    const { engine, moves } = makeEngine({ speed: 100 });
+    expect(engine.flipDirection()).toBe(-1);
+    engine.start();
+    engine.tick(1000);
+    engine.tick(1050);
+    expect(moves).toEqual([-5]);
+  });
+
+  it("flips back and forth", () => {
+    const { engine } = makeEngine();
+    engine.flipDirection();
+    expect(engine.flipDirection()).toBe(1);
+    expect(engine.direction).toBe(1);
+  });
+
+  it("keeps speed positive when reversed, so the display stays sane", () => {
+    const { engine } = makeEngine({ speed: 100 });
+    engine.flipDirection();
+    engine.adjustSpeed(15);
+    expect(engine.speed).toBe(115);
+    expect(engine.direction).toBe(-1);
+  });
+
+  it("accumulates sub-pixel remainders upward too", () => {
+    // Same binary-exact operands as the downward test: 32 px/s at 1/64 s.
+    const { engine, moves } = makeEngine({ speed: 32 });
+    engine.flipDirection();
+    engine.start();
+    engine.tick(0);
+    for (let i = 1; i <= 4; i += 1) engine.tick(i * 15.625);
+    expect(moves).toEqual([-1, -1]);
+  });
+
+  it("clears the remainder on a flip so it cannot lurch", () => {
+    const { engine, moves } = makeEngine({ speed: 32 });
+    engine.start();
+    engine.tick(0);
+    engine.tick(15.625); // accumulates exactly 0.5px, scrolls nothing
+    expect(moves).toEqual([]);
+    engine.flipDirection();
+    engine.tick(31.25);
+    expect(moves).toEqual([]); // a carried +0.5 would have produced -0/+1 noise
+    engine.tick(46.875);
+    expect(moves).toEqual([-1]);
+  });
+});

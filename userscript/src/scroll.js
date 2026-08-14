@@ -31,6 +31,7 @@ export class ScrollEngine {
     this._step = step;
     this._speed = clampSpeed(speed, min, max);
     this._seeded = seeded;
+    this._direction = 1;
     this._running = false;
     this._frame = null;
     this._lastTimestamp = null;
@@ -43,6 +44,19 @@ export class ScrollEngine {
 
   get speed() {
     return this._speed;
+  }
+
+  /** +1 scrolls down the page, -1 scrolls back up. Speed stays positive. */
+  get direction() {
+    return this._direction;
+  }
+
+  flipDirection() {
+    this._direction = -this._direction;
+    // Drop the carried fraction: it was accumulated in the other direction
+    // and would otherwise discharge as a jolt on the first reversed frame.
+    this._remainder = 0;
+    return this._direction;
   }
 
   get step() {
@@ -112,7 +126,7 @@ export class ScrollEngine {
         MAX_FRAME_SECONDS,
         (timestampMs - this._lastTimestamp) / 1000,
       );
-      this._remainder += this._speed * dt;
+      this._remainder += this._speed * this._direction * dt;
       const whole = Math.trunc(this._remainder);
       if (whole !== 0) {
         this._remainder -= whole;

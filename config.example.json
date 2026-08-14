@@ -12,6 +12,8 @@
     "faster": "numpad_plus",
     "slower": "numpad_minus",
     "prev": "numpad8",
-    "next": "numpad2"
+    "next": "numpad2",
+    "reverse": "numpad5",
+    "help": "numpad_star"
   }
 }

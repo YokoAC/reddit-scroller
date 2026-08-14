@@ -6,6 +6,12 @@ from collections.abc import Callable
 
 from .config import Config
 
+# Commands that should keep firing while their key is held, letting Windows'
+# auto-repeat ramp the value. Every other command fires once per physical
+# press, so a finger resting on the toggle key cannot strobe the scroller and
+# a held open key cannot fire a burst of navigations.
+REPEAT_ON_HOLD = frozenset({"faster", "slower"})
+
 
 class HotkeyListener:
     """Dispatches physical key events to command names.
@@ -27,11 +33,11 @@ class HotkeyListener:
 
     def handle_press(self, event) -> str | None:
         identity = self._identity(event)
-        if identity in self._held:
-            return None  # Windows auto-repeat, not a new press.
         command = self._config.lookup(*identity)
         if command is None:
             return None
+        if identity in self._held and command not in REPEAT_ON_HOLD:
+            return None  # Windows auto-repeat, not a new press.
         self._held.add(identity)
         self._on_command(command)
         return command

@@ -9,6 +9,7 @@ import { Transport, gmRequest } from "./transport.js";
 const PORT = 8765;
 const STATE_KEY = "rs-scroll-state";
 const FLASH_MS = 900;
+const HELP_AUTOSHOW_MS = 6000;
 
 const DEFAULTS = {
   speed_min: 15,
@@ -64,6 +65,9 @@ function boot() {
 
   let mode = detectMode(window.location.pathname);
   let daemonConnected = false;
+  let helpVisible = false;
+  let helpTimer = null;
+  let helpShownOnce = false;
   let lastCommand = null;
   let flashTimer = null;
 
@@ -71,6 +75,7 @@ function boot() {
     return {
       running: engine.running,
       speed: engine.speed,
+      direction: engine.direction,
       speedMin: settings.speed_min,
       speedMax: settings.speed_max,
       mode,
@@ -78,6 +83,8 @@ function boot() {
       postCount: selection.count,
       daemonConnected,
       lastCommand,
+      bindings: settings.bindings,
+      helpVisible,
     };
   }
 
@@ -93,6 +100,24 @@ function boot() {
       lastCommand = null;
       paint();
     }, FLASH_MS);
+  }
+
+  // Navigation always lands paused, so the top of a thread (or the feed you
+  // came back to) is never scrolled past before you can read it. Stopping the
+  // engine matters as much as persisting: the back-forward cache can restore
+  // a page without re-running this script at all.
+  function leavePaused() {
+    engine.stop();
+    persist({ running: false, speed: engine.speed });
+  }
+
+  function showHelp(visible) {
+    helpVisible = visible;
+    if (helpTimer) {
+      clearTimeout(helpTimer);
+      helpTimer = null;
+    }
+    paint();
   }
 
   function savePosition() {
@@ -123,11 +148,11 @@ function boot() {
     openSelected() {
       const post = selection.selected;
       if (!post) return;
-      savePosition();
+      leavePaused();
       window.location.href = post.permalink;
     },
     goBack() {
-      savePosition();
+      leavePaused();
       window.history.back();
     },
     selectNext() {
@@ -139,6 +164,12 @@ function boot() {
       selection.move(-1);
       scrollToSelected();
       selection.applyHighlight();
+    },
+    flipDirection() {
+      engine.flipDirection();
+    },
+    toggleHelp() {
+      showHelp(!helpVisible);
     },
     pageDown() {
       window.scrollBy(0, window.innerHeight * 0.8);
@@ -187,6 +218,15 @@ function boot() {
         engine.setLimits(settings.speed_min, settings.speed_max);
         engine.seedDefaultSpeed(settings.default_speed);
         selection.setFocusLine(settings.focus_line);
+        if (!helpShownOnce) {
+          helpShownOnce = true;
+          helpVisible = true;
+          helpTimer = setTimeout(() => {
+            helpVisible = false;
+            helpTimer = null;
+            paint();
+          }, HELP_AUTOSHOW_MS);
+        }
       }
       paint();
     },

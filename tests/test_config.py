@@ -25,6 +25,8 @@ def test_default_bindings_cover_every_command():
         "slower",
         "prev",
         "next",
+        "reverse",
+        "help",
     }
     assert cfg.bindings["toggle"] == KeyBinding(scan_code=82, is_keypad=True)
     assert cfg.bindings["next"] == KeyBinding(scan_code=80, is_keypad=True)
@@ -55,9 +57,9 @@ def test_partial_file_overrides_only_named_fields(tmp_path):
 
 def test_partial_bindings_merge_over_defaults(tmp_path):
     path = tmp_path / "config.json"
-    path.write_text(json.dumps({"bindings": {"toggle": "numpad5"}}))
+    path.write_text(json.dumps({"bindings": {"toggle": "numpad1"}}))
     cfg = load_config(path)
-    assert cfg.bindings["toggle"] == KeyBinding(scan_code=76, is_keypad=True)
+    assert cfg.bindings["toggle"] == KeyBinding(scan_code=79, is_keypad=True)
     assert cfg.bindings["back"] == Config.default().bindings["back"]
 
 
@@ -132,10 +134,39 @@ def test_a_non_numeric_setting_is_rejected(tmp_path):
 
 
 def test_browser_settings_carry_only_what_the_page_needs():
-    assert Config.default().browser_settings() == {
-        "speed_min": 15.0,
-        "speed_max": 600.0,
-        "speed_step": 15.0,
-        "default_speed": 90.0,
-        "focus_line": 0.25,
-    }
+    settings = Config.default().browser_settings()
+    assert settings["speed_min"] == 15.0
+    assert settings["speed_max"] == 600.0
+    assert settings["speed_step"] == 15.0
+    assert settings["default_speed"] == 90.0
+    assert settings["focus_line"] == 0.25
+
+
+def test_the_two_new_commands_are_in_the_vocabulary():
+    cfg = Config.default()
+    assert cfg.bindings["reverse"] == KeyBinding(scan_code=76, is_keypad=True)
+    assert cfg.bindings["help"] == KeyBinding(scan_code=55, is_keypad=True)
+    assert cfg.lookup(76, is_keypad=True) == "reverse"
+    assert cfg.lookup(55, is_keypad=True) == "help"
+
+
+def test_binding_names_round_trip_back_to_key_names():
+    # The help panel renders the user's ACTUAL bindings, so the daemon has to
+    # report the key names it resolved, not just the scan codes.
+    names = Config.default().binding_names()
+    assert names["toggle"] == "numpad0"
+    assert names["reverse"] == "numpad5"
+    assert names["help"] == "numpad_star"
+    assert set(names) == set(Config.default().bindings)
+
+
+def test_binding_names_follow_a_rebinding(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": {"reverse": "numpad9"}}))
+    assert load_config(path).binding_names()["reverse"] == "numpad9"
+
+
+def test_browser_settings_carries_the_bindings():
+    settings = Config.default().browser_settings()
+    assert settings["default_speed"] == 90.0
+    assert settings["bindings"]["faster"] == "numpad_plus"

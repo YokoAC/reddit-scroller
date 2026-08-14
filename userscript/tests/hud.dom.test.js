@@ -82,3 +82,67 @@ describe("Hud", () => {
     expect(document.querySelector(`#${HUD_ID}`)).toBeNull();
   });
 });
+
+describe("Hud help panel", () => {
+  const BINDINGS = {
+    toggle: "numpad0",
+    faster: "numpad_plus",
+    reverse: "numpad5",
+    help: "numpad_star",
+  };
+
+  const WITH_HELP = { ...STATE, bindings: BINDINGS, helpVisible: true };
+
+  it("is hidden until asked for", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render({ ...STATE, bindings: BINDINGS, helpVisible: false });
+    const panel = document.querySelector(".rs-help");
+    expect(panel).not.toBeNull();
+    expect(panel.hidden).toBe(true);
+  });
+
+  it("lists the bindings when shown", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render(WITH_HELP);
+    const panel = document.querySelector(".rs-help");
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain("Num 0");
+    expect(panel.textContent).toContain("pause / resume");
+    expect(panel.textContent).toContain("Num 5");
+  });
+
+  it("shows the rebound key, not the default", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render({ ...WITH_HELP, bindings: { ...BINDINGS, reverse: "numpad9" } });
+    const panel = document.querySelector(".rs-help");
+    expect(panel.textContent).toContain("Num 9");
+    expect(panel.textContent).not.toContain("Num 5");
+  });
+
+  it("rebuilds cleanly rather than appending on every render", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render(WITH_HELP);
+    hud.render(WITH_HELP);
+    const rows = document.querySelectorAll(".rs-help .rs-help-row");
+    expect(rows).toHaveLength(4);
+  });
+
+  it("renders binding text as text, never as markup", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render({ ...WITH_HELP, bindings: { toggle: "<img src=x onerror=1>" } });
+    expect(document.querySelector(".rs-help img")).toBeNull();
+  });
+
+  it("survives having no bindings at all (daemon down)", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    expect(() =>
+      hud.render({ ...STATE, bindings: null, helpVisible: true }),
+    ).not.toThrow();
+  });
+});

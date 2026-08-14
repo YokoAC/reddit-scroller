@@ -39,13 +39,29 @@ step — but rerun `npm run build` and reinstall the file if you change the sour
 |---|---|---|
 | Numpad `0` | pause / resume scrolling | pause / resume scrolling |
 | Numpad `+` / `-` | speed up / down by 15 px/s | speed up / down by 15 px/s |
+| Numpad `5` | flip scroll direction | flip scroll direction |
 | Numpad `8` / `2` | select previous / next post | scroll up / down a screen |
 | Numpad `Enter` | open the selected post | — |
 | Numpad `.` | — | back to the feed |
+| Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
+
+**Hold `+` or `-`** and the speed ramps continuously — the whole 15–600 px/s range
+takes about a second. The other keys deliberately fire once per press, so a finger
+resting on numpad `0` can't strobe the scroller.
+
+**Numpad `5` reverses direction** rather than changing speed; the HUD's arrow (`▼` or
+`▲`) always shows which way you're going, and the speed keeps its own setting.
+
+**Opening a thread always lands paused**, at the top, so you never scroll past the
+opening. Pressing `.` returns to the feed, also paused. Press `0` when you're ready.
 
 The selected post is outlined in blue and named in the HUD. While auto-scrolling it
 follows whatever sits a quarter of the way down the screen; pressing `8` or `2` pins
 your choice until it scrolls off.
+
+The hotkey panel lists your *actual* bindings, read from the daemon — so it stays
+correct if you rebind anything. It also appears by itself for six seconds when a page
+loads.
 
 Nothing is suppressed — your game still receives every one of these keys.
 
@@ -66,7 +82,7 @@ you leave out keeps its default.
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_enter`.
 
-Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`.
+Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`, `help`.
 
 `config.json` is gitignored — it's local to your machine. `config.example.json` is
 the committed template.
@@ -96,6 +112,6 @@ the page does not react, the problem is the transport.
 ## Development
 
 ```bash
-uv run pytest              # daemon tests (53)
-cd userscript && npm test  # userscript tests (91)
+uv run pytest              # daemon tests (67)
+cd userscript && npm test  # userscript tests (124)
 ```

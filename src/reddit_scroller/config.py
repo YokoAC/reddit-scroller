@@ -7,7 +7,17 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 COMMANDS = frozenset(
-    {"toggle", "open", "back", "faster", "slower", "prev", "next"}
+    {
+        "toggle",
+        "open",
+        "back",
+        "faster",
+        "slower",
+        "prev",
+        "next",
+        "reverse",
+        "help",
+    }
 )
 
 # Windows set-1 scan codes. Every numpad key also carries is_keypad=True, which
@@ -38,6 +48,14 @@ DEFAULT_BINDINGS: dict[str, str] = {
     "slower": "numpad_minus",
     "prev": "numpad8",
     "next": "numpad2",
+    "reverse": "numpad5",
+    "help": "numpad_star",
+}
+
+# KEY_CODES values are unique, so the mapping inverts cleanly. The help panel
+# needs to show the key names the user actually configured.
+_NAMES_BY_CODE: dict[tuple[int, bool], str] = {
+    code: name for name, code in KEY_CODES.items()
 }
 
 
@@ -72,6 +90,13 @@ class Config:
                 return command
         return None
 
+    def binding_names(self) -> dict[str, str]:
+        """Command -> key name, as configured. Drives the help panel."""
+        return {
+            command: _NAMES_BY_CODE[(binding.scan_code, binding.is_keypad)]
+            for command, binding in self.bindings.items()
+        }
+
     def browser_settings(self) -> dict:
         """The subset of config the userscript needs to know about."""
         return {
@@ -80,6 +105,7 @@ class Config:
             "speed_step": self.speed_step,
             "default_speed": self.default_speed,
             "focus_line": self.focus_line,
+            "bindings": self.binding_names(),
         }
 
 

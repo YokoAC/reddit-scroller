@@ -24,7 +24,9 @@
     open: { feed: "openSelected", thread: "noop" },
     back: { feed: "noop", thread: "goBack" },
     next: { feed: "selectNext", thread: "pageDown" },
-    prev: { feed: "selectPrev", thread: "pageUp" }
+    prev: { feed: "selectPrev", thread: "pageUp" },
+    reverse: { feed: "flipDirection", thread: "flipDirection" },
+    help: { feed: "toggleHelp", thread: "toggleHelp" }
   };
   function resolveAction(command, mode) {
     const byMode = ACTIONS[command];
@@ -38,7 +40,9 @@
     NumpadAdd: "faster",
     NumpadSubtract: "slower",
     Numpad8: "prev",
-    Numpad2: "next"
+    Numpad2: "next",
+    Numpad5: "reverse",
+    NumpadMultiply: "help"
   };
   function commandForKeyCode(code) {
     return KEY_CODES[code] || null;
@@ -194,12 +198,66 @@
   overflow: hidden;
 }
 #${HUD_ID} .rs-flash { font-size: 14px; color: #58a6ff; min-height: 19px; }
+#${HUD_ID} .rs-help {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 14px;
+}
+#${HUD_ID} .rs-help-row {
+  display: flex;
+  gap: 10px;
+  padding: 1px 0;
+  opacity: 0.85;
+}
+#${HUD_ID} .rs-help-key {
+  flex: 0 0 76px;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  color: #58a6ff;
+}
 .${HIGHLIGHT_CLASS} {
   outline: 3px solid #58a6ff !important;
   outline-offset: 2px;
   border-radius: 8px;
 }
 `;
+  var KEY_LABELS = {
+    numpad0: "Num 0",
+    numpad1: "Num 1",
+    numpad2: "Num 2",
+    numpad3: "Num 3",
+    numpad4: "Num 4",
+    numpad5: "Num 5",
+    numpad6: "Num 6",
+    numpad7: "Num 7",
+    numpad8: "Num 8",
+    numpad9: "Num 9",
+    numpad_dot: "Num .",
+    numpad_plus: "Num +",
+    numpad_minus: "Num \u2212",
+    numpad_star: "Num *",
+    numpad_enter: "Num Enter"
+  };
+  var HELP_ORDER = [
+    ["toggle", "pause / resume"],
+    ["faster", "speed up (hold to ramp)"],
+    ["slower", "slow down (hold to ramp)"],
+    ["reverse", "flip scroll direction"],
+    ["next", "next post / page down"],
+    ["prev", "previous post / page up"],
+    ["open", "open selected post"],
+    ["back", "back to the feed"],
+    ["help", "show or hide this panel"]
+  ];
+  function helpRows(bindings) {
+    const rows = [];
+    for (const [command, action] of HELP_ORDER) {
+      const name = bindings ? bindings[command] : null;
+      if (!name) continue;
+      rows.push({ command, action, key: KEY_LABELS[name] || name });
+    }
+    return rows;
+  }
   function formatHud(state) {
     const span = Math.max(1, state.speedMax - state.speedMin);
     const filled = Math.round(
@@ -219,7 +277,7 @@
     return {
       status: state.running ? "SCROLLING" : "PAUSED",
       statusClass: state.running ? "rs-running" : "rs-paused",
-      speed: `${Math.round(state.speed)} px/s`,
+      speed: `${state.direction === -1 ? "\u25B2" : "\u25BC"} ${Math.round(state.speed)} px/s`,
       bar: "\u2593".repeat(clamped) + "\u2591".repeat(BAR_CELLS - clamped),
       mode: state.mode.toUpperCase(),
       subreddit,
@@ -264,6 +322,7 @@
       <div class="rs-sub"></div>
       <div class="rs-title"></div>
       <div class="rs-flash"></div>
+      <div class="rs-help" hidden></div>
     `;
       this._doc.body.appendChild(root);
       this._root = root;
@@ -278,7 +337,8 @@
         mode: root.querySelector(".rs-mode"),
         sub: root.querySelector(".rs-sub"),
         title: root.querySelector(".rs-title"),
-        flash: root.querySelector(".rs-flash")
+        flash: root.querySelector(".rs-flash"),
+        help: root.querySelector(".rs-help")
       };
     }
     render(state) {
@@ -295,6 +355,29 @@
       n.sub.textContent = view.subreddit;
       n.title.textContent = view.title;
       n.flash.textContent = view.flash;
+      this._renderHelp(state);
+    }
+    _renderHelp(state) {
+      const node = this._nodes.help;
+      if (!node) return;
+      node.hidden = !state.helpVisible;
+      if (!state.helpVisible) return;
+      const rows = helpRows(state.bindings);
+      const signature = rows.map((r) => `${r.key}\0${r.action}`).join("");
+      if (node.dataset.signature === signature) return;
+      node.dataset.signature = signature;
+      node.textContent = "";
+      for (const row of rows) {
+        const line = this._doc.createElement("div");
+        line.className = "rs-help-row";
+        const key = this._doc.createElement("span");
+        key.className = "rs-help-key";
+        key.textContent = row.key;
+        const action = this._doc.createElement("span");
+        action.textContent = row.action;
+        line.append(key, action);
+        node.appendChild(line);
+      }
     }
     unmount() {
       if (this._root && this._root.parentNode) {
@@ -333,6 +416,7 @@
       this._step = step;
       this._speed = clampSpeed(speed, min, max);
       this._seeded = seeded;
+      this._direction = 1;
       this._running = false;
       this._frame = null;
       this._lastTimestamp = null;
@@ -343,6 +427,15 @@
     }
     get speed() {
       return this._speed;
+    }
+    /** +1 scrolls down the page, -1 scrolls back up. Speed stays positive. */
+    get direction() {
+      return this._direction;
+    }
+    flipDirection() {
+      this._direction = -this._direction;
+      this._remainder = 0;
+      return this._direction;
     }
     get step() {
       return this._step;
@@ -400,7 +493,7 @@
           MAX_FRAME_SECONDS,
           (timestampMs - this._lastTimestamp) / 1e3
         );
-        this._remainder += this._speed * dt;
+        this._remainder += this._speed * this._direction * dt;
         const whole = Math.trunc(this._remainder);
         if (whole !== 0) {
           this._remainder -= whole;
@@ -507,6 +600,7 @@
   var PORT = 8765;
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
+  var HELP_AUTOSHOW_MS = 6e3;
   var DEFAULTS = {
     speed_min: 15,
     speed_max: 600,
@@ -553,19 +647,25 @@
     hud.mount();
     let mode = detectMode(window.location.pathname);
     let daemonConnected = false;
+    let helpVisible = false;
+    let helpTimer = null;
+    let helpShownOnce = false;
     let lastCommand = null;
     let flashTimer = null;
     function snapshot() {
       return {
         running: engine.running,
         speed: engine.speed,
+        direction: engine.direction,
         speedMin: settings.speed_min,
         speedMax: settings.speed_max,
         mode,
         selected: selection.selected,
         postCount: selection.count,
         daemonConnected,
-        lastCommand
+        lastCommand,
+        bindings: settings.bindings,
+        helpVisible
       };
     }
     function paint() {
@@ -579,6 +679,18 @@
         lastCommand = null;
         paint();
       }, FLASH_MS);
+    }
+    function leavePaused() {
+      engine.stop();
+      persist({ running: false, speed: engine.speed });
+    }
+    function showHelp(visible) {
+      helpVisible = visible;
+      if (helpTimer) {
+        clearTimeout(helpTimer);
+        helpTimer = null;
+      }
+      paint();
     }
     function savePosition() {
       persist({ running: engine.running, speed: engine.speed });
@@ -606,11 +718,11 @@
       openSelected() {
         const post = selection.selected;
         if (!post) return;
-        savePosition();
+        leavePaused();
         window.location.href = post.permalink;
       },
       goBack() {
-        savePosition();
+        leavePaused();
         window.history.back();
       },
       selectNext() {
@@ -622,6 +734,12 @@
         selection.move(-1);
         scrollToSelected();
         selection.applyHighlight();
+      },
+      flipDirection() {
+        engine.flipDirection();
+      },
+      toggleHelp() {
+        showHelp(!helpVisible);
       },
       pageDown() {
         window.scrollBy(0, window.innerHeight * 0.8);
@@ -666,6 +784,15 @@
           engine.setLimits(settings.speed_min, settings.speed_max);
           engine.seedDefaultSpeed(settings.default_speed);
           selection.setFocusLine(settings.focus_line);
+          if (!helpShownOnce) {
+            helpShownOnce = true;
+            helpVisible = true;
+            helpTimer = setTimeout(() => {
+              helpVisible = false;
+              helpTimer = null;
+              paint();
+            }, HELP_AUTOSHOW_MS);
+          }
         }
         paint();
       }

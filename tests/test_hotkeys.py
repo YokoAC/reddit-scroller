@@ -143,3 +143,35 @@ def test_auto_repeat_is_still_collapsed_through_the_dispatcher():
     hk.handle_event(event(82, "up"))
     hk.handle_event(event(82, "down"))
     assert fired == ["toggle", "toggle"]
+
+
+def test_holding_the_speed_keys_ramps_continuously():
+    # Windows auto-repeat is what drives the ramp; the speed keys deliberately
+    # opt out of the one-shot guard so a held + walks the speed up.
+    hk, fired = listener()
+    for _ in range(4):
+        hk.handle_event(event(78, "down"))  # numpad +
+    assert fired == ["faster"] * 4
+
+    fired.clear()
+    for _ in range(3):
+        hk.handle_event(event(74, "down"))  # numpad -
+    assert fired == ["slower"] * 3
+
+
+def test_holding_any_other_key_still_fires_once():
+    # A finger resting on numpad 0 must not strobe the scroller, and a held
+    # Enter must not fire a burst of navigations.
+    hk, fired = listener()
+    for scan_code in (82, 28, 83, 72, 80, 76, 55):
+        for _ in range(4):
+            hk.handle_event(event(scan_code, "down"))
+    assert fired == ["toggle", "open", "back", "prev", "next", "reverse", "help"]
+
+
+def test_a_ramping_key_still_clears_on_release():
+    hk, fired = listener()
+    hk.handle_event(event(78, "down"))
+    hk.handle_event(event(78, "up"))
+    hk.handle_event(event(78, "down"))
+    assert fired == ["faster", "faster"]

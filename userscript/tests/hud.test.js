@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { BAR_CELLS, formatHud } from "../src/hud.js";
+import { BAR_CELLS, formatHud, helpRows } from "../src/hud.js";
 
 const BASE = {
   running: true,
@@ -27,11 +27,11 @@ describe("formatHud", () => {
   });
 
   it("renders the speed with units", () => {
-    expect(formatHud(BASE).speed).toBe("90 px/s");
+    expect(formatHud(BASE).speed).toBe("▼ 90 px/s");
   });
 
   it("rounds a fractional speed", () => {
-    expect(formatHud({ ...BASE, speed: 97.4 }).speed).toBe("97 px/s");
+    expect(formatHud({ ...BASE, speed: 97.4 }).speed).toBe("▼ 97 px/s");
   });
 
   it("renders a bar of fixed width", () => {
@@ -85,5 +85,75 @@ describe("formatHud", () => {
   it("shows the last command, uppercased", () => {
     expect(formatHud({ ...BASE, lastCommand: "faster" }).flash).toBe("FASTER");
     expect(formatHud(BASE).flash).toBe("");
+  });
+});
+
+describe("direction", () => {
+  it("shows a down arrow with the speed by default", () => {
+    expect(formatHud({ ...BASE, direction: 1 }).speed).toBe("▼ 90 px/s");
+  });
+
+  it("shows an up arrow when reversed", () => {
+    expect(formatHud({ ...BASE, direction: -1 }).speed).toBe("▲ 90 px/s");
+  });
+
+  it("treats a missing direction as downward", () => {
+    expect(formatHud(BASE).speed).toBe("▼ 90 px/s");
+  });
+});
+
+describe("helpRows", () => {
+  const BINDINGS = {
+    toggle: "numpad0",
+    open: "numpad_enter",
+    back: "numpad_dot",
+    faster: "numpad_plus",
+    slower: "numpad_minus",
+    prev: "numpad8",
+    next: "numpad2",
+    reverse: "numpad5",
+    help: "numpad_star",
+  };
+
+  it("renders a friendly label for every key name", () => {
+    const rows = helpRows(BINDINGS);
+    const byAction = Object.fromEntries(rows.map((r) => [r.command, r.key]));
+    expect(byAction.toggle).toBe("Num 0");
+    expect(byAction.open).toBe("Num Enter");
+    expect(byAction.back).toBe("Num .");
+    expect(byAction.faster).toBe("Num +");
+    expect(byAction.slower).toBe("Num −");
+    expect(byAction.reverse).toBe("Num 5");
+    expect(byAction.help).toBe("Num *");
+  });
+
+  it("describes what each command does", () => {
+    const rows = helpRows(BINDINGS);
+    const byCommand = Object.fromEntries(rows.map((r) => [r.command, r.action]));
+    expect(byCommand.toggle).toMatch(/pause/i);
+    expect(byCommand.faster).toMatch(/hold/i); // the ramp is worth advertising
+    expect(byCommand.reverse).toMatch(/direction/i);
+  });
+
+  it("reflects a rebound key rather than the default", () => {
+    const rows = helpRows({ ...BINDINGS, reverse: "numpad9" });
+    expect(rows.find((r) => r.command === "reverse").key).toBe("Num 9");
+  });
+
+  it("keeps a stable order regardless of object key order", () => {
+    const shuffled = Object.fromEntries(Object.entries(BINDINGS).reverse());
+    expect(helpRows(shuffled).map((r) => r.command)).toEqual(
+      helpRows(BINDINGS).map((r) => r.command),
+    );
+  });
+
+  it("skips commands with no binding", () => {
+    const rows = helpRows({ toggle: "numpad0" });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].command).toBe("toggle");
+  });
+
+  it("falls back to the raw name for an unknown key", () => {
+    expect(helpRows({ toggle: "f13" })[0].key).toBe("f13");
   });
 });

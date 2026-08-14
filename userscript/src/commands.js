@@ -12,6 +12,8 @@ const ACTIONS = {
   back: { feed: "noop", thread: "goBack" },
   next: { feed: "selectNext", thread: "pageDown" },
   prev: { feed: "selectPrev", thread: "pageUp" },
+  reverse: { feed: "flipDirection", thread: "flipDirection" },
+  help: { feed: "toggleHelp", thread: "toggleHelp" },
 };
 
 export function resolveAction(command, mode) {
@@ -31,6 +33,8 @@ const KEY_CODES = {
   NumpadSubtract: "slower",
   Numpad8: "prev",
   Numpad2: "next",
+  Numpad5: "reverse",
+  NumpadMultiply: "help",
 };
 
 export function commandForKeyCode(code) {

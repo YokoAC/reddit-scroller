@@ -82,6 +82,20 @@ def test_duplicate_key_across_two_commands_is_rejected(tmp_path):
         load_config(path)
 
 
+def test_bindings_as_a_string_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": "numpad0"}))
+    with pytest.raises(ConfigError, match="bindings"):
+        load_config(path)
+
+
+def test_bindings_as_a_list_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": [1, 2]}))
+    with pytest.raises(ConfigError, match="bindings"):
+        load_config(path)
+
+
 def test_default_speed_outside_the_range_is_rejected(tmp_path):
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"default_speed": 5}))

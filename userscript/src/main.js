@@ -48,6 +48,9 @@ function boot() {
     min: settings.speed_min,
     max: settings.speed_max,
     step: settings.speed_step,
+    // A persisted speed is a deliberate prior choice; the daemon's
+    // default_speed must not override it once it arrives.
+    seeded: typeof persisted?.speed === "number",
   });
 
   const selection = new Selection({
@@ -182,6 +185,7 @@ function boot() {
         Object.assign(settings, transport.settings);
         // Both were built from built-in defaults; adopt the user's config.
         engine.setLimits(settings.speed_min, settings.speed_max);
+        engine.seedDefaultSpeed(settings.default_speed);
         selection.setFocusLine(settings.focus_line);
       }
       paint();
@@ -198,9 +202,15 @@ function boot() {
   window.addEventListener("keydown", (event) => {
     // Numpad keys typed into Reddit's search box are text, not commands.
     if (isTyping(event.target)) return;
+    // The daemon's hook is global and fires regardless of window focus, so
+    // when it is connected it already delivers this same keypress over the
+    // transport. This in-page fallback exists only to make the script
+    // usable (and testable) without the daemon running.
+    if (daemonConnected) return;
     const command = commandForKeyCode(event.code);
     if (command) handleCommand(command);
   });
+  window.addEventListener("popstate", refresh);
   window.addEventListener("pagehide", savePosition);
 
   setInterval(() => transport.postState(snapshot()), 1000);

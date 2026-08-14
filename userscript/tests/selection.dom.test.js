@@ -106,6 +106,28 @@ describe("Selection", () => {
     expect(sel.selected.title).toBe("Three");
   });
 
+  it("selects the first post on a cold start (nothing intersecting the viewport)", () => {
+    const sel = makeSelection();
+    // Push every post below the viewport so refresh() lands on index -1 —
+    // the state of a just-loaded feed (or a tall ad block) before anything
+    // qualifies for the focus line.
+    document.querySelectorAll("shreddit-post").forEach((el, i) => {
+      el.getBoundingClientRect = () => ({
+        top: 1000 + i * 200,
+        bottom: 1200 + i * 200,
+        left: 0,
+        right: 500,
+        width: 500,
+        height: 200,
+      });
+    });
+    sel.refresh();
+    expect(sel.selected).toBeNull(); // confirms the cold-start precondition
+
+    sel.move(1);
+    expect(sel.selected.title).toBe("One"); // must not skip straight to "Two"
+  });
+
   it("returns null from move when there are no posts", () => {
     document.body.innerHTML = "";
     const sel = makeSelection();

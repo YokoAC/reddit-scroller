@@ -96,6 +96,6 @@ the page does not react, the problem is the transport.
 ## Development
 
 ```bash
-uv run pytest              # daemon tests (51)
-cd userscript && npm test  # userscript tests (86)
+uv run pytest              # daemon tests (53)
+cd userscript && npm test  # userscript tests (91)
 ```

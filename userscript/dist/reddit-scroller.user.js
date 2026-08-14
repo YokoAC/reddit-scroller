@@ -127,7 +127,7 @@
     }
     move(delta) {
       if (this._posts.length === 0) return null;
-      const from = this._index === -1 ? 0 : this._index;
+      const from = this._index === -1 ? delta > 0 ? -1 : 0 : this._index;
       this._index = Math.min(
         this._posts.length - 1,
         Math.max(0, from + delta)
@@ -319,7 +319,11 @@
       speed,
       min,
       max,
-      step
+      step,
+      // Whether `speed` already reflects a deliberate choice (typically a
+      // value persisted from a previous session) rather than a placeholder
+      // built-in default. See seedDefaultSpeed().
+      seeded = false
     }) {
       this._scrollBy = scrollBy;
       this._requestFrame = requestFrame;
@@ -328,6 +332,7 @@
       this._max = max;
       this._step = step;
       this._speed = clampSpeed(speed, min, max);
+      this._seeded = seeded;
       this._running = false;
       this._frame = null;
       this._lastTimestamp = null;
@@ -348,7 +353,20 @@
       return this._speed;
     }
     adjustSpeed(delta) {
+      this._seeded = true;
       return this.setSpeed(this._speed + delta);
+    }
+    /**
+     * Adopt a daemon-configured default speed — but only the first time this
+     * is called on an engine that was not already seeded (by a persisted
+     * speed at construction, a prior call here, or a manual adjustSpeed()).
+     * Safe to call on every daemon connect/reconnect: after the first
+     * application it is a no-op, so it cannot undo a live +/- adjustment.
+     */
+    seedDefaultSpeed(pxPerSecond) {
+      if (this._seeded) return this._speed;
+      this._seeded = true;
+      return this.setSpeed(pxPerSecond);
     }
     /** Adopt limits reported by the daemon, re-clamping the current speed. */
     setLimits(min, max) {
@@ -521,7 +539,10 @@
       speed: persisted?.speed ?? settings.default_speed,
       min: settings.speed_min,
       max: settings.speed_max,
-      step: settings.speed_step
+      step: settings.speed_step,
+      // A persisted speed is a deliberate prior choice; the daemon's
+      // default_speed must not override it once it arrives.
+      seeded: typeof persisted?.speed === "number"
     });
     const selection = new Selection({
       root: document,
@@ -643,6 +664,7 @@
         if (ok && transport.settings) {
           Object.assign(settings, transport.settings);
           engine.setLimits(settings.speed_min, settings.speed_max);
+          engine.seedDefaultSpeed(settings.default_speed);
           selection.setFocusLine(settings.focus_line);
         }
         paint();
@@ -656,9 +678,11 @@
     window.addEventListener("scroll", refresh, { passive: true });
     window.addEventListener("keydown", (event) => {
       if (isTyping(event.target)) return;
+      if (daemonConnected) return;
       const command = commandForKeyCode(event.code);
       if (command) handleCommand(command);
     });
+    window.addEventListener("popstate", refresh);
     window.addEventListener("pagehide", savePosition);
     setInterval(() => transport.postState(snapshot()), 1e3);
     refresh();

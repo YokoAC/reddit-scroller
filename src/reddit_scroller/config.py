@@ -143,8 +143,15 @@ def load_config(path: Path) -> Config:
     if not isinstance(raw, dict):
         raise ConfigError(f"{path.name} must contain a JSON object")
 
+    bindings_raw = raw.pop("bindings", {})
+    if not isinstance(bindings_raw, dict):
+        raise ConfigError(
+            f"bindings must be a JSON object mapping commands to key names, "
+            f"got {bindings_raw!r}"
+        )
+
     binding_names = dict(DEFAULT_BINDINGS)
-    binding_names.update(raw.pop("bindings", {}))
+    binding_names.update(bindings_raw)
 
     known = {f for f in Config.__dataclass_fields__ if f != "bindings"}
     unknown = set(raw) - known

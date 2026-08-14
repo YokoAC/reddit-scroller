@@ -129,6 +129,34 @@ describe("ScrollEngine", () => {
     expect(engine.speed).toBe(900);
   });
 
+  it("seeds the default speed when nothing has claimed the speed yet", () => {
+    const { engine } = makeEngine({ speed: 90 });
+    engine.seedDefaultSpeed(200);
+    expect(engine.speed).toBe(200);
+  });
+
+  it("does not seed when constructed from a persisted speed", () => {
+    const { engine } = makeEngine({ speed: 90, seeded: true });
+    engine.seedDefaultSpeed(200);
+    expect(engine.speed).toBe(90);
+  });
+
+  it("only seeds once, so a later reconnect cannot re-seat the speed", () => {
+    const { engine } = makeEngine({ speed: 90 });
+    engine.seedDefaultSpeed(200);
+    expect(engine.speed).toBe(200);
+    engine.seedDefaultSpeed(300); // e.g. a second daemon connect
+    expect(engine.speed).toBe(200);
+  });
+
+  it("treats a manual adjustSpeed as seeding, so a later reconnect cannot undo it", () => {
+    const { engine } = makeEngine({ speed: 90 });
+    engine.adjustSpeed(15); // user presses "+" before the daemon connects
+    expect(engine.speed).toBe(105);
+    engine.seedDefaultSpeed(200); // daemon connects afterwards
+    expect(engine.speed).toBe(105);
+  });
+
   it("resets the accumulator on a speed change so it does not jump", () => {
     const { engine, moves } = makeEngine({ speed: 15 });
     engine.start();

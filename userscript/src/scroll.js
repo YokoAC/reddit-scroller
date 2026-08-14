@@ -18,6 +18,10 @@ export class ScrollEngine {
     min,
     max,
     step,
+    // Whether `speed` already reflects a deliberate choice (typically a
+    // value persisted from a previous session) rather than a placeholder
+    // built-in default. See seedDefaultSpeed().
+    seeded = false,
   }) {
     this._scrollBy = scrollBy;
     this._requestFrame = requestFrame;
@@ -26,6 +30,7 @@ export class ScrollEngine {
     this._max = max;
     this._step = step;
     this._speed = clampSpeed(speed, min, max);
+    this._seeded = seeded;
     this._running = false;
     this._frame = null;
     this._lastTimestamp = null;
@@ -51,7 +56,23 @@ export class ScrollEngine {
   }
 
   adjustSpeed(delta) {
+    // A deliberate user adjustment counts as seeding: it must not be undone
+    // later by seedDefaultSpeed(), e.g. across a daemon reconnect.
+    this._seeded = true;
     return this.setSpeed(this._speed + delta);
+  }
+
+  /**
+   * Adopt a daemon-configured default speed — but only the first time this
+   * is called on an engine that was not already seeded (by a persisted
+   * speed at construction, a prior call here, or a manual adjustSpeed()).
+   * Safe to call on every daemon connect/reconnect: after the first
+   * application it is a no-op, so it cannot undo a live +/- adjustment.
+   */
+  seedDefaultSpeed(pxPerSecond) {
+    if (this._seeded) return this._speed;
+    this._seeded = true;
+    return this.setSpeed(pxPerSecond);
   }
 
   /** Adopt limits reported by the daemon, re-clamping the current speed. */

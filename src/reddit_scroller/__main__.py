@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from aiohttp import web
 
@@ -38,7 +40,10 @@ def log(message: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {message}", flush=True)
 
 
-async def run(config: Config, listener_factory=HotkeyListener) -> None:
+async def run(
+    config: Config,
+    listener_factory: Callable[[Config, Callable[[str], None]], Any] = HotkeyListener,
+) -> None:
     bus = EventBus()
     bus.bind_loop(asyncio.get_running_loop())
 

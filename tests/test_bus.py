@@ -61,8 +61,9 @@ async def test_wait_for_wakes_on_a_later_append():
         await asyncio.sleep(0.01)
         bus.append("faster")
 
-    asyncio.create_task(append_soon())
+    waker = asyncio.create_task(append_soon())
     events = await asyncio.wait_for(bus.wait_for(0, timeout=5.0), timeout=1.0)
+    await waker
     assert [e.command for e in events] == ["faster"]
 
 

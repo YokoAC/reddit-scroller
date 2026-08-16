@@ -17,6 +17,7 @@ Prints "READY <port>" on stdout once it is accepting connections.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import sys
 import threading
 from dataclasses import replace
@@ -60,7 +61,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        pass

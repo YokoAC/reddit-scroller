@@ -28,6 +28,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      - name: Lint (ruff)
+        run: uv run ruff check --output-format=github .
+
+      - name: Check formatting (ruff)
+        run: uv run ruff format --check .
+
+      - name: Type-check (mypy, strict)
+        run: uv run mypy
+
       - name: Run the daemon tests with coverage
         shell: bash
         run: |
@@ -68,6 +77,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: userscript
+
+      - name: Lint and check formatting (biome)
+        run: npm run lint
         working-directory: userscript
 
       - name: Run the userscript tests with coverage

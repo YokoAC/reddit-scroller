@@ -111,7 +111,9 @@ class Daemon {
   /** Idempotent: some tests stop the daemon themselves, then afterEach runs. */
   async stop() {
     if (this._exited) return;
-    const exited = new Promise((resolve) => this._process.once("exit", resolve));
+    const exited = new Promise((resolve) =>
+      this._process.once("exit", resolve),
+    );
     this._process.kill();
     await Promise.race([
       exited,

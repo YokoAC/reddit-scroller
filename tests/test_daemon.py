@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import replace
+from typing import ClassVar
 
 import aiohttp
 import pytest
@@ -13,7 +14,7 @@ from reddit_scroller.config import Config
 class FakeListener:
     """Stands in for the real keyboard hook — no OS hook is installed."""
 
-    instances: list["FakeListener"] = []
+    instances: ClassVar[list["FakeListener"]] = []
 
     def __init__(self, config, on_command):
         self.config = config
@@ -119,15 +120,13 @@ async def test_cleanup_runs_when_listener_stop_raises(monkeypatch):
     assert cleanup_calls, "runner.cleanup() must run even when listener.stop() raises"
 
 
-def test_main_does_not_report_a_non_bind_oserror_as_a_bind_failure(
-    monkeypatch, capsys
-):
+def test_main_does_not_report_a_non_bind_oserror_as_a_bind_failure(monkeypatch, capsys):
     """An OSError that escapes run() for a reason other than the port bind
     (e.g. from hook teardown during shutdown) must propagate unchanged, not
     get mislabeled as 'could not bind ... another daemon may already be
     running'."""
 
-    async def raising_run(config, listener_factory=None):
+    async def raising_run(_config, listener_factory=None):  # noqa: ARG001
         raise OSError("hook teardown failed")
 
     monkeypatch.setattr(daemon, "run", raising_run)

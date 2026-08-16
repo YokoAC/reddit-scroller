@@ -88,8 +88,7 @@ export class Selection {
         (post) => post.permalink === this._pinned,
       );
       const rect = rects[pinnedIndex];
-      const stillVisible =
-        rect && rect.bottom > 0 && rect.top < viewportHeight;
+      const stillVisible = rect && rect.bottom > 0 && rect.top < viewportHeight;
       if (stillVisible) {
         this._index = pinnedIndex;
         return;
@@ -106,23 +105,17 @@ export class Selection {
 
   move(delta) {
     if (this._posts.length === 0) return null;
-    const from =
-      this._index === -1 ? (delta > 0 ? -1 : 0) : this._index;
-    this._index = Math.min(
-      this._posts.length - 1,
-      Math.max(0, from + delta),
-    );
+    const from = this._index === -1 ? (delta > 0 ? -1 : 0) : this._index;
+    this._index = Math.min(this._posts.length - 1, Math.max(0, from + delta));
     this._pinned = this._posts[this._index].permalink;
     return this.selectedElement;
   }
 
   applyHighlight() {
     const wanted = this.selectedElement;
-    this._root
-      .querySelectorAll(`.${HIGHLIGHT_CLASS}`)
-      .forEach((element) => {
-        if (element !== wanted) element.classList.remove(HIGHLIGHT_CLASS);
-      });
+    this._root.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((element) => {
+      if (element !== wanted) element.classList.remove(HIGHLIGHT_CLASS);
+    });
     if (wanted) wanted.classList.add(HIGHLIGHT_CLASS);
   }
 }

@@ -262,7 +262,7 @@ export class Hud {
   }
 
   unmount() {
-    if (this._root && this._root.parentNode) {
+    if (this._root?.parentNode) {
       this._root.parentNode.removeChild(this._root);
     }
     this._root = null;

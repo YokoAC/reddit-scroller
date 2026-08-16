@@ -38,8 +38,18 @@ beforeAll(async () => {
 // location.href, so the path it exercises is identical.
 const POSTS = [
   { permalink: "#/r/a/comments/1/one/", title: "First", sub: "r/a", score: 10 },
-  { permalink: "#/r/b/comments/2/two/", title: "Second", sub: "r/b", score: 20 },
-  { permalink: "#/r/c/comments/3/three/", title: "Third", sub: "r/c", score: 30 },
+  {
+    permalink: "#/r/b/comments/2/two/",
+    title: "Second",
+    sub: "r/b",
+    score: 20,
+  },
+  {
+    permalink: "#/r/c/comments/3/three/",
+    title: "Third",
+    sub: "r/c",
+    score: 30,
+  },
 ];
 
 const SETTINGS = {
@@ -343,8 +353,9 @@ describe("navigation always lands paused", () => {
     // Persisting alone would not be enough: the back-forward cache can restore
     // a page without re-running the script, so the engine must stop too.
     expect(page.hud(".rs-status")).toBe("PAUSED");
-    expect(JSON.parse(page.window.sessionStorage.getItem("rs-scroll-state")))
-      .not.toHaveProperty("running", true);
+    expect(
+      JSON.parse(page.window.sessionStorage.getItem("rs-scroll-state")),
+    ).not.toHaveProperty("running", true);
   });
 
   it("stops scrolling before going back", async () => {
@@ -441,9 +452,9 @@ describe("the help panel", () => {
 
   it("does not auto-appear with no daemon to report bindings", async () => {
     page = await Page.open({ daemonUp: false });
-    expect(
-      page.window.document.querySelector("#rs-hud .rs-help").hidden,
-    ).toBe(true);
+    expect(page.window.document.querySelector("#rs-hud .rs-help").hidden).toBe(
+      true,
+    );
   });
 
   it("shows a rebound key rather than the default", async () => {
@@ -543,9 +554,9 @@ describe("state reporting", () => {
 describe("a feed with no posts", () => {
   it("still scrolls and says so in the HUD", async () => {
     page = await Page.open();
-    page.window.document
-      .querySelectorAll("shreddit-post")
-      .forEach((el) => el.remove());
+    page.window.document.querySelectorAll("shreddit-post").forEach((el) => {
+      el.remove();
+    });
     await page.send("toggle");
     await page.settle(120);
     expect(page.hud(".rs-status")).toBe("SCROLLING");
@@ -554,9 +565,9 @@ describe("a feed with no posts", () => {
 
   it("treats open as a no-op rather than throwing", async () => {
     page = await Page.open();
-    page.window.document
-      .querySelectorAll("shreddit-post")
-      .forEach((el) => el.remove());
+    page.window.document.querySelectorAll("shreddit-post").forEach((el) => {
+      el.remove();
+    });
     // Let the page notice they are gone. Without this the selection still
     // holds the last post it saw, and opening that permalink is correct --
     // Reddit recycles feed nodes, so a vanished element does not mean a

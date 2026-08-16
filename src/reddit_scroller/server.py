@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from aiohttp import web
 
@@ -63,7 +64,7 @@ async def _get_state(request: web.Request) -> web.Response:
 
 
 def create_app(
-    bus: EventBus, settings: dict, poll_timeout: float = 25.0
+    bus: EventBus, settings: dict[str, Any], poll_timeout: float = 25.0
 ) -> web.Application:
     app = web.Application()
     app["bus"] = bus

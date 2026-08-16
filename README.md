@@ -6,6 +6,9 @@
 [![platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)](#setup)
 [![browser: Firefox](https://img.shields.io/badge/browser-Firefox-FF7139?logo=firefoxbrowser&logoColor=white)](#setup)
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2)](https://mypy-lang.org/)
+[![biome](https://img.shields.io/badge/checked_with-biome-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev/)
 
 Auto-scrolls a Reddit feed in your normal Firefox on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
@@ -126,6 +129,10 @@ the page does not react, the problem is the transport.
 ## Development
 
 ```bash
+uv run ruff check . && uv run ruff format --check .   # lint the daemon
+uv run mypy                          # strict type-check the daemon
+cd userscript && npm run lint        # lint and format-check the userscript
+
 uv run pytest                        # daemon tests
 uv run pytest --cov                  # ...with coverage
 cd userscript && npm test            # userscript unit tests

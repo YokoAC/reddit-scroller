@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { commandForKeyCode, detectMode, resolveAction } from "../src/commands.js";
+import {
+  commandForKeyCode,
+  detectMode,
+  resolveAction,
+} from "../src/commands.js";
 
 describe("detectMode", () => {
   it("calls a comments URL a thread", () => {

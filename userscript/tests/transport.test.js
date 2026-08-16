@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Transport, nextBackoff } from "../src/transport.js";
+import { nextBackoff, Transport } from "../src/transport.js";
 
 function harness({ responses }) {
   const calls = [];
@@ -51,7 +51,7 @@ describe("Transport", () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: { default_speed: 90 } }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 0, events: [] });
         },
@@ -66,7 +66,7 @@ describe("Transport", () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: {} }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({
             cursor: 2,
@@ -87,7 +87,7 @@ describe("Transport", () => {
       responses: [
         ok({ ok: true, settings: {} }),
         ok({ cursor: 7, events: [{ seq: 7, command: "next" }] }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 7, events: [] });
         },
@@ -102,7 +102,7 @@ describe("Transport", () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: {} }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 0, events: [] });
         },
@@ -185,7 +185,7 @@ describe("Transport", () => {
         ok({ ok: true, settings: {} }),
         ok({ cursor: 0, events: [] }),
         ok({ cursor: 0, events: [] }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 0, events: [] });
         },
@@ -213,14 +213,16 @@ describe("Transport", () => {
         },
       ],
     });
-    await expect(h.transport.postState({ running: true })).resolves.toBeUndefined();
+    await expect(
+      h.transport.postState({ running: true }),
+    ).resolves.toBeUndefined();
   });
 
   it("stops polling once stopped", async () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: {} }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 0, events: [] });
         },
@@ -240,7 +242,7 @@ describe("Transport starts from the present", () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: {}, cursor: 157 }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 157, events: [] });
         },
@@ -254,7 +256,7 @@ describe("Transport starts from the present", () => {
     const h = harness({
       responses: [
         ok({ ok: true, settings: {} }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 0, events: [] });
         },
@@ -269,7 +271,7 @@ describe("Transport starts from the present", () => {
       responses: [
         ok({ ok: true, settings: {}, cursor: 10 }),
         ok({ cursor: 11, events: [{ seq: 11, command: "toggle" }] }),
-        (o) => {
+        () => {
           h.transport.stop();
           return ok({ cursor: 11, events: [] });
         },

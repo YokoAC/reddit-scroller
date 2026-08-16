@@ -13,6 +13,8 @@ dev = [
     "pytest>=8.3",
     "pytest-aiohttp>=1.1",
     "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
 ]
 
 [build-system]
@@ -41,3 +43,51 @@ exclude_also = [
 ]
 fail_under = 95
 show_missing = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src", "tests"]
+# The design doc and implementation plan are a historical record of how this
+# was built. Ruff reformats the Python snippets inside them, which is churn
+# against a document nobody executes.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "N",    # pep8 naming
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "A",    # shadowed builtins
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "RET",  # return style
+    "PTH",  # prefer pathlib
+    "ARG",  # unused arguments
+    "RUF",  # ruff's own
+]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src", "tests"]
+strict = true
+
+[[tool.mypy.overrides]]
+# The keyboard library ships no type information.
+module = "keyboard.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests get every check except mandatory annotations on each test function:
+# requiring "-> None" on a hundred test defs buys nothing. This needs tests/
+# to be a real package: mypy only accepts wildcards as whole components, so
+# "test_*" is not a usable pattern, and without __init__.py these files would
+# be top-level modules that "tests.*" could never match.
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false

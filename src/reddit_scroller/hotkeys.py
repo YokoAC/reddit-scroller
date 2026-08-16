@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from .config import Config
 
@@ -25,13 +26,16 @@ class HotkeyListener:
         self._config = config
         self._on_command = on_command
         self._held: set[tuple[int, bool]] = set()
-        self._hooks: list = []
+        self._hooks: list[Any] = []
 
     @staticmethod
-    def _identity(event) -> tuple[int, bool]:
-        return (getattr(event, "scan_code", -1), bool(getattr(event, "is_keypad", False)))
+    def _identity(event: Any) -> tuple[int, bool]:
+        return (
+            getattr(event, "scan_code", -1),
+            bool(getattr(event, "is_keypad", False)),
+        )
 
-    def handle_press(self, event) -> str | None:
+    def handle_press(self, event: Any) -> str | None:
         identity = self._identity(event)
         command = self._config.lookup(*identity)
         if command is None:
@@ -42,10 +46,10 @@ class HotkeyListener:
         self._on_command(command)
         return command
 
-    def handle_release(self, event) -> None:
+    def handle_release(self, event: Any) -> None:
         self._held.discard(self._identity(event))
 
-    def handle_event(self, event) -> None:
+    def handle_event(self, event: Any) -> None:
         """Route one raw key event. Always returns None.
 
         This must stay a single hook rather than a keyboard.on_press plus a

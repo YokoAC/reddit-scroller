@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -12,7 +13,7 @@ class Event:
     seq: int
     command: str
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, int | str]:
         return {"seq": self.seq, "command": self.command}
 
 
@@ -27,8 +28,8 @@ class EventBus:
     def __init__(self, max_events: int = 256) -> None:
         self._events: deque[Event] = deque(maxlen=max_events)
         self._seq = 0
-        self._state: dict = {}
-        self._waiters: list[asyncio.Future] = []
+        self._state: dict[str, Any] = {}
+        self._waiters: list[asyncio.Future[None]] = []
         self._loop: asyncio.AbstractEventLoop | None = None
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -68,15 +69,15 @@ class EventBus:
         self._waiters.append(waiter)
         try:
             await asyncio.wait_for(waiter, timeout)
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             pass
         finally:
             if waiter in self._waiters:
                 self._waiters.remove(waiter)
         return self.since(cursor)
 
-    def set_state(self, state: dict) -> None:
+    def set_state(self, state: dict[str, Any]) -> None:
         self._state = state
 
-    def get_state(self) -> dict:
+    def get_state(self) -> dict[str, Any]:
         return self._state

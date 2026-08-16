@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ScrollEngine, clampSpeed } from "../src/scroll.js";
+import { clampSpeed, ScrollEngine } from "../src/scroll.js";
 
 function makeEngine(overrides = {}) {
   const moves = [];

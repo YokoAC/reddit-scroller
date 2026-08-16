@@ -115,7 +115,7 @@ def test_focus_line_outside_the_viewport_is_rejected(tmp_path):
 def test_invalid_json_is_reported_as_a_config_error(tmp_path):
     path = tmp_path / "config.json"
     path.write_text("{not json")
-    with pytest.raises(ConfigError, match="config.json"):
+    with pytest.raises(ConfigError, match=r"config\.json"):
         load_config(path)
 
 

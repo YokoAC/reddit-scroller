@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { HIGHLIGHT_CLASS, Selection, readPosts } from "../src/selection.js";
+import { HIGHLIGHT_CLASS, readPosts, Selection } from "../src/selection.js";
 
 const POSTS = [
   { permalink: "/r/a/comments/1/one/", title: "One", sub: "r/a", score: "12" },
   { permalink: "/r/b/comments/2/two/", title: "Two", sub: "r/b", score: "34" },
-  { permalink: "/r/c/comments/3/three/", title: "Three", sub: "r/c", score: "56" },
+  {
+    permalink: "/r/c/comments/3/three/",
+    title: "Three",
+    sub: "r/c",
+    score: "56",
+  },
 ];
 
 function buildFeed(posts = POSTS) {

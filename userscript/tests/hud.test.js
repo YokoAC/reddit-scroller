@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { BAR_CELLS, formatHud, helpRows } from "../src/hud.js";
 import { commandForKeyCode } from "../src/commands.js";
+import { BAR_CELLS, formatHud, helpRows } from "../src/hud.js";
 
 // The label the panel should print for each DOM key code the in-page fallback
 // handles. The code->command direction is read from commands.js itself.
 const CODE_TO_LABEL = {
-  Numpad0: "Num 0", NumpadEnter: "Num Enter", NumpadDecimal: "Num .",
-  NumpadAdd: "Num +", NumpadSubtract: "Num −", Numpad8: "Num 8",
-  Numpad2: "Num 2", Numpad5: "Num 5", NumpadMultiply: "Num *",
+  Numpad0: "Num 0",
+  NumpadEnter: "Num Enter",
+  NumpadDecimal: "Num .",
+  NumpadAdd: "Num +",
+  NumpadSubtract: "Num −",
+  Numpad8: "Num 8",
+  Numpad2: "Num 2",
+  Numpad5: "Num 5",
+  NumpadMultiply: "Num *",
 };
 
 const BASE = {
@@ -138,7 +144,9 @@ describe("helpRows", () => {
 
   it("describes what each command does", () => {
     const rows = helpRows(BINDINGS);
-    const byCommand = Object.fromEntries(rows.map((r) => [r.command, r.action]));
+    const byCommand = Object.fromEntries(
+      rows.map((r) => [r.command, r.action]),
+    );
     expect(byCommand.toggle).toMatch(/pause/i);
     expect(byCommand.faster).toMatch(/hold/i); // the ramp is worth advertising
     expect(byCommand.reverse).toMatch(/direction/i);

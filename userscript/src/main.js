@@ -4,7 +4,7 @@ import { commandForKeyCode, detectMode, resolveAction } from "./commands.js";
 import { Hud } from "./hud.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
-import { Transport, gmRequest } from "./transport.js";
+import { gmRequest, Transport } from "./transport.js";
 
 const PORT = 8765;
 const STATE_KEY = "rs-scroll-state";

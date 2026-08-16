@@ -116,14 +116,20 @@ def test_the_dispatcher_routes_a_release_so_the_key_can_fire_again():
     assert fired == ["toggle", "toggle"]
 
 
-def test_the_dispatcher_never_returns_truthy():
-    # A truthy return would halt keyboard's handler loop for every other
-    # listener on the system -- and, if we ever register a second hook, for
-    # ourselves.
+def test_the_dispatcher_never_halts_the_handler_chain():
+    # keyboard stops dispatching to further handlers as soon as one returns
+    # truthy, which would silence every other listener on the system -- and,
+    # if we ever register a second hook, ourselves. Asserting through
+    # invoke_handlers tests that consequence rather than the raw return value,
+    # which the type checker already pins to None.
     hk, _ = listener()
-    assert not hk.handle_event(event(82, "down"))
-    assert not hk.handle_event(event(82, "up"))
-    assert not hk.handle_event(event(999, "down"))
+    later_handler_saw: list[SimpleNamespace] = []
+    handlers = [hk.handle_event, later_handler_saw.append]
+
+    for scan_code, event_type in [(82, "down"), (82, "up"), (999, "down")]:
+        assert invoke_handlers(handlers, event(scan_code, event_type)) is None
+
+    assert len(later_handler_saw) == 3
 
 
 def test_a_repeated_key_survives_the_libraries_dispatch_loop():

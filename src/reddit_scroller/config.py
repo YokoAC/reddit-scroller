@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any, cast
 
 COMMANDS = frozenset(
     {
@@ -80,7 +81,7 @@ class Config:
     bindings: dict[str, KeyBinding] = field(default_factory=dict)
 
     @classmethod
-    def default(cls) -> "Config":
+    def default(cls) -> Config:
         return cls(bindings=_resolve_bindings(DEFAULT_BINDINGS))
 
     def lookup(self, scan_code: int, is_keypad: bool) -> str | None:
@@ -97,7 +98,7 @@ class Config:
             for command, binding in self.bindings.items()
         }
 
-    def browser_settings(self) -> dict:
+    def browser_settings(self) -> dict[str, Any]:
         """The subset of config the userscript needs to know about."""
         return {
             "speed_min": self.speed_min,
@@ -125,8 +126,7 @@ def _resolve_bindings(names: dict[str, str]) -> dict[str, KeyBinding]:
             )
         if key_name in seen:
             raise ConfigError(
-                f"key {key_name!r} is bound to both {seen[key_name]!r} "
-                f"and {command!r}"
+                f"key {key_name!r} is bound to both {seen[key_name]!r} and {command!r}"
             )
         seen[key_name] = command
         scan_code, is_keypad = KEY_CODES[key_name]
@@ -191,10 +191,12 @@ def load_config(path: Path) -> Config:
         except (TypeError, ValueError) as exc:
             raise ConfigError(f"{key} must be a number, got {value!r}") from exc
 
+    # replace() is typed per field, so a dict of mixed int/float values
+    # cannot be expressed to the checker. The values were validated above.
     cfg = replace(
         Config.default(),
         bindings=_resolve_bindings(binding_names),
-        **numeric,
+        **cast("Any", numeric),
     )
     _validate(cfg)
     return cfg

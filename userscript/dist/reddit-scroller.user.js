@@ -141,10 +141,7 @@
     move(delta) {
       if (this._posts.length === 0) return null;
       const from = this._index === -1 ? delta > 0 ? -1 : 0 : this._index;
-      this._index = Math.min(
-        this._posts.length - 1,
-        Math.max(0, from + delta)
-      );
+      this._index = Math.min(this._posts.length - 1, Math.max(0, from + delta));
       this._pinned = this._posts[this._index].permalink;
       return this.selectedElement;
     }
@@ -390,7 +387,7 @@
       }
     }
     unmount() {
-      if (this._root && this._root.parentNode) {
+      if (this._root?.parentNode) {
         this._root.parentNode.removeChild(this._root);
       }
       this._root = null;

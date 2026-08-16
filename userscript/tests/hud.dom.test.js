@@ -43,7 +43,9 @@ describe("Hud", () => {
     second.mount();
     second.render({ ...STATE, speed: 300 });
     expect(document.querySelectorAll(`#${HUD_ID}`)).toHaveLength(1);
-    expect(document.querySelector(`#${HUD_ID}`).textContent).toContain("300 px/s");
+    expect(document.querySelector(`#${HUD_ID}`).textContent).toContain(
+      "300 px/s",
+    );
   });
 
   it("writes the state into the panel", () => {
@@ -63,12 +65,22 @@ describe("Hud", () => {
     hud.mount();
     hud.render({
       ...STATE,
-      selected: { title: "<img src=x onerror=alert(1)>", subreddit: "<script>alert(2)</script>", score: 0 },
+      selected: {
+        title: "<img src=x onerror=alert(1)>",
+        subreddit: "<script>alert(2)</script>",
+        score: 0,
+      },
       lastCommand: "<iframe src=x></iframe>",
     });
-    expect(document.querySelector(`#${HUD_ID}`).querySelector("img")).toBeNull();
-    expect(document.querySelector(`#${HUD_ID}`).querySelector("script")).toBeNull();
-    expect(document.querySelector(`#${HUD_ID}`).querySelector("iframe")).toBeNull();
+    expect(
+      document.querySelector(`#${HUD_ID}`).querySelector("img"),
+    ).toBeNull();
+    expect(
+      document.querySelector(`#${HUD_ID}`).querySelector("script"),
+    ).toBeNull();
+    expect(
+      document.querySelector(`#${HUD_ID}`).querySelector("iframe"),
+    ).toBeNull();
   });
 
   it("rendering before mount is harmless", () => {

@@ -57,8 +57,9 @@ async def test_events_returns_as_soon_as_a_command_arrives(client, bus):
         await asyncio.sleep(0.01)
         bus.append("open")
 
-    asyncio.create_task(append_soon())
+    appender = asyncio.create_task(append_soon())
     body = await (await client.get("/events", params={"cursor": "0"})).json()
+    await appender
     assert [e["command"] for e in body["events"]] == ["open"]
 
 
@@ -135,13 +136,9 @@ async def test_a_fresh_client_starting_from_health_gets_no_backlog(client, bus):
         bus.append(command)
 
     cursor = (await (await client.get("/health")).json())["cursor"]
-    body = await (
-        await client.get("/events", params={"cursor": str(cursor)})
-    ).json()
+    body = await (await client.get("/events", params={"cursor": str(cursor)})).json()
     assert body["events"] == []
 
     bus.append("toggle")
-    body = await (
-        await client.get("/events", params={"cursor": str(cursor)})
-    ).json()
+    body = await (await client.get("/events", params={"cursor": str(cursor)})).json()
     assert [e["command"] for e in body["events"]] == ["toggle"]

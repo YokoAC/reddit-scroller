@@ -2,11 +2,26 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: "node",
-    environmentMatchGlobs: [["tests/*.dom.test.js", "jsdom"]],
-    // Unit tests only. The integration suite needs a real daemon, so it
-    // runs separately via `npm run test:integration`.
-    include: ["tests/*.test.js"],
+    // Two projects rather than environmentMatchGlobs, which vitest deprecated:
+    // most tests are pure logic and run far faster without a DOM, while the
+    // *.dom.test.js files need one.
+    projects: [
+      {
+        test: {
+          name: "unit",
+          environment: "node",
+          include: ["tests/*.test.js"],
+          exclude: ["tests/*.dom.test.js"],
+        },
+      },
+      {
+        test: {
+          name: "dom",
+          environment: "jsdom",
+          include: ["tests/*.dom.test.js"],
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       include: ["src/**"],

@@ -49,9 +49,13 @@ async def test_events_times_out_with_an_empty_list_and_an_unchanged_cursor(clien
     assert body == {"cursor": 0, "events": []}
 
 
-async def test_events_returns_as_soon_as_a_command_arrives(client, bus):
-    app = client.app
-    app["poll_timeout"] = 5.0
+async def test_events_returns_as_soon_as_a_command_arrives(aiohttp_client, bus):
+    # Build a client with a long poll timeout rather than mutating the shared
+    # one after it has started: aiohttp deprecates changing a running app, and
+    # a test that has to reach inside a started app to work is testing the
+    # fixture as much as the server.
+    app = create_app(bus, Config.default().browser_settings(), poll_timeout=5.0)
+    client = await aiohttp_client(app)
 
     async def append_soon():
         await asyncio.sleep(0.01)

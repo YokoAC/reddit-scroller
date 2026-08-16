@@ -27,6 +27,8 @@ packages = ["src/reddit_scroller"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# A warning nobody acts on is noise that hides the one that matters.
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 source = ["src/reddit_scroller"]

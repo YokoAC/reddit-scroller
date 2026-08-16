@@ -63,6 +63,10 @@ export class Transport {
         if (this._settings === null) {
           const health = await this._json("GET", "/health");
           this._settings = health.settings || {};
+          // Begin at the daemon's current position. A page that has just
+          // loaded must not be handed the backlog: replaying old commands
+          // re-runs navigation and throws the reader back where they were.
+          if (typeof health.cursor === "number") this._cursor = health.cursor;
         }
         const body = await this._json("GET", `/events?cursor=${this._cursor}`);
         this._setConnected(true);

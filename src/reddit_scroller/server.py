@@ -17,7 +17,15 @@ def _cursor_from(request: web.Request) -> int:
 
 
 async def _health(request: web.Request) -> web.Response:
-    return web.json_response({"ok": True, "settings": request.app["settings"]})
+    # The cursor lets a freshly loaded page start from the present. Polling
+    # from 0 would replay every command still in the log at it.
+    return web.json_response(
+        {
+            "ok": True,
+            "settings": request.app["settings"],
+            "cursor": request.app["bus"].cursor,
+        }
+    )
 
 
 async def _events(request: web.Request) -> web.Response:

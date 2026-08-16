@@ -118,3 +118,30 @@ async def test_a_resync_does_not_replay_commands_from_the_old_session(client, bu
     body = await (await client.get("/events", params={"cursor": "42"})).json()
     assert body["events"] == []
     assert body["cursor"] == 2
+
+
+async def test_health_reports_the_current_cursor(client, bus):
+    # A page that has just loaded must start from the present. Without this it
+    # asks for everything since 0 and replays the whole session -- including
+    # navigation commands.
+    assert (await (await client.get("/health")).json())["cursor"] == 0
+    bus.append("toggle")
+    bus.append("next")
+    assert (await (await client.get("/health")).json())["cursor"] == 2
+
+
+async def test_a_fresh_client_starting_from_health_gets_no_backlog(client, bus):
+    for command in ("open", "back", "prev", "prev", "faster"):
+        bus.append(command)
+
+    cursor = (await (await client.get("/health")).json())["cursor"]
+    body = await (
+        await client.get("/events", params={"cursor": str(cursor)})
+    ).json()
+    assert body["events"] == []
+
+    bus.append("toggle")
+    body = await (
+        await client.get("/events", params={"cursor": str(cursor)})
+    ).json()
+    assert [e["command"] for e in body["events"]] == ["toggle"]

@@ -232,3 +232,51 @@ describe("Transport", () => {
     expect(h.request.mock.calls.length).toBe(after);
   });
 });
+
+describe("Transport starts from the present", () => {
+  it("polls from the cursor /health reports, not from zero", async () => {
+    // Starting at 0 makes the daemon replay its whole log at a page that has
+    // just loaded, re-running old navigation commands.
+    const h = harness({
+      responses: [
+        ok({ ok: true, settings: {}, cursor: 157 }),
+        (o) => {
+          h.transport.stop();
+          return ok({ cursor: 157, events: [] });
+        },
+      ],
+    });
+    await h.transport.start();
+    expect(h.calls[1].url).toContain("cursor=157");
+  });
+
+  it("falls back to zero when the daemon reports no cursor", async () => {
+    const h = harness({
+      responses: [
+        ok({ ok: true, settings: {} }),
+        (o) => {
+          h.transport.stop();
+          return ok({ cursor: 0, events: [] });
+        },
+      ],
+    });
+    await h.transport.start();
+    expect(h.calls[1].url).toContain("cursor=0");
+  });
+
+  it("does not rewind to the health cursor after it has advanced", async () => {
+    const h = harness({
+      responses: [
+        ok({ ok: true, settings: {}, cursor: 10 }),
+        ok({ cursor: 11, events: [{ seq: 11, command: "toggle" }] }),
+        (o) => {
+          h.transport.stop();
+          return ok({ cursor: 11, events: [] });
+        },
+      ],
+    });
+    await h.transport.start();
+    expect(h.calls[1].url).toContain("cursor=10");
+    expect(h.calls[2].url).toContain("cursor=11");
+  });
+});

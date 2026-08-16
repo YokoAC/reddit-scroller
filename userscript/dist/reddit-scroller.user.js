@@ -564,6 +564,7 @@
           if (this._settings === null) {
             const health = await this._json("GET", "/health");
             this._settings = health.settings || {};
+            if (typeof health.cursor === "number") this._cursor = health.cursor;
           }
           const body = await this._json("GET", `/events?cursor=${this._cursor}`);
           this._setConnected(true);

@@ -44,6 +44,17 @@
     Numpad5: "reverse",
     NumpadMultiply: "help"
   };
+  var DEFAULT_BINDINGS = {
+    toggle: "numpad0",
+    open: "numpad_enter",
+    back: "numpad_dot",
+    faster: "numpad_plus",
+    slower: "numpad_minus",
+    prev: "numpad8",
+    next: "numpad2",
+    reverse: "numpad5",
+    help: "numpad_star"
+  };
   function commandForKeyCode(code) {
     return KEY_CODES[code] || null;
   }
@@ -250,9 +261,10 @@
     ["help", "show or hide this panel"]
   ];
   function helpRows(bindings) {
+    const source = bindings && Object.keys(bindings).length ? bindings : DEFAULT_BINDINGS;
     const rows = [];
     for (const [command, action] of HELP_ORDER) {
-      const name = bindings ? bindings[command] : null;
+      const name = source[command];
       if (!name) continue;
       rows.push({ command, action, key: KEY_LABELS[name] || name });
     }
@@ -363,7 +375,7 @@
       node.hidden = !state.helpVisible;
       if (!state.helpVisible) return;
       const rows = helpRows(state.bindings);
-      const signature = rows.map((r) => `${r.key}\0${r.action}`).join("");
+      const signature = JSON.stringify(rows);
       if (node.dataset.signature === signature) return;
       node.dataset.signature = signature;
       node.textContent = "";

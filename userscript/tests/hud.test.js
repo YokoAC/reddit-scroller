@@ -1,5 +1,14 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { BAR_CELLS, formatHud, helpRows } from "../src/hud.js";
+import { commandForKeyCode } from "../src/commands.js";
+
+// The label the panel should print for each DOM key code the in-page fallback
+// handles. The code->command direction is read from commands.js itself.
+const CODE_TO_LABEL = {
+  Numpad0: "Num 0", NumpadEnter: "Num Enter", NumpadDecimal: "Num .",
+  NumpadAdd: "Num +", NumpadSubtract: "Num −", Numpad8: "Num 8",
+  Numpad2: "Num 2", Numpad5: "Num 5", NumpadMultiply: "Num *",
+};
 
 const BASE = {
   running: true,
@@ -155,5 +164,47 @@ describe("helpRows", () => {
 
   it("falls back to the raw name for an unknown key", () => {
     expect(helpRows({ toggle: "f13" })[0].key).toBe("f13");
+  });
+});
+
+describe("helpRows without a daemon", () => {
+  it("falls back to the built-in defaults rather than showing nothing", () => {
+    // A dead daemon never reports bindings, and that is precisely when a
+    // user reaches for the cheat sheet.
+    const rows = helpRows(undefined);
+    expect(rows.length).toBeGreaterThan(0);
+    const byCommand = Object.fromEntries(rows.map((r) => [r.command, r.key]));
+    expect(byCommand.toggle).toBe("Num 0");
+    expect(byCommand.help).toBe("Num *");
+  });
+
+  it("treats an empty bindings object the same as none", () => {
+    expect(helpRows({}).length).toBe(helpRows(undefined).length);
+  });
+
+  it("still prefers the daemon's bindings when it has them", () => {
+    const rows = helpRows({ toggle: "numpad9" });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].key).toBe("Num 9");
+  });
+
+  it("advertises the same keys the in-page fallback actually handles", () => {
+    // If these drift apart the panel lies to anyone running without a daemon.
+    // commandForKeyCode is the real fallback map, so this asserts against the
+    // shipped behaviour rather than a copy of it.
+    const shown = Object.fromEntries(
+      helpRows(undefined).map((r) => [r.command, r.key]),
+    );
+    for (const [code, label] of Object.entries(CODE_TO_LABEL)) {
+      const command = commandForKeyCode(code);
+      expect(command).not.toBeNull();
+      expect(shown[command]).toBe(label);
+    }
+    // and every advertised command must be reachable by some fallback key
+    expect(Object.keys(shown).sort()).toEqual(
+      Object.values(CODE_TO_LABEL)
+        .map((_, i) => commandForKeyCode(Object.keys(CODE_TO_LABEL)[i]))
+        .sort(),
+    );
   });
 });

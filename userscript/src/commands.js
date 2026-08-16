@@ -37,6 +37,23 @@ const KEY_CODES = {
   NumpadMultiply: "help",
 };
 
+/**
+ * The bindings this script assumes when the daemon has not told us otherwise.
+ * Mirrors DEFAULT_BINDINGS in config.py, and matches the KEY_CODES fallback
+ * above -- so with the daemon down, these are genuinely the keys that work.
+ */
+export const DEFAULT_BINDINGS = {
+  toggle: "numpad0",
+  open: "numpad_enter",
+  back: "numpad_dot",
+  faster: "numpad_plus",
+  slower: "numpad_minus",
+  prev: "numpad8",
+  next: "numpad2",
+  reverse: "numpad5",
+  help: "numpad_star",
+};
+
 export function commandForKeyCode(code) {
   return KEY_CODES[code] || null;
 }

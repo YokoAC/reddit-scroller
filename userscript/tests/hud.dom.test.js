@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { HUD_ID, Hud } from "../src/hud.js";
 

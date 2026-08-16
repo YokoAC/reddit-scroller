@@ -55,6 +55,10 @@ resting on numpad `0` can't strobe the scroller.
 **Opening a thread always lands paused**, at the top, so you never scroll past the
 opening. Pressing `.` returns to the feed, also paused. Press `0` when you're ready.
 
+**A page never starts scrolling on its own.** Your speed is remembered within a tab,
+so opening a thread and coming back keeps it — but a new tab starts at
+`default_speed` and paused. Nothing is stored beyond the tab's lifetime.
+
 The selected post is outlined in blue and named in the HUD. While auto-scrolling it
 follows whatever sits a quarter of the way down the screen; pressing `8` or `2` pins
 your choice until it scrolls off.

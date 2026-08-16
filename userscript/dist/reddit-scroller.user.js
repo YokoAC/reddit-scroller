@@ -5,8 +5,6 @@
 // @description  Hands-free Reddit scrolling driven by global hotkeys
 // @match        https://www.reddit.com/*
 // @grant        GM_xmlhttpRequest
-// @grant        GM_setValue
-// @grant        GM_getValue
 // @connect      127.0.0.1
 // @connect      localhost
 // @run-at       document-idle
@@ -622,16 +620,16 @@
   };
   function loadPersisted() {
     try {
-      const raw = GM_getValue(STATE_KEY, null);
+      const raw = sessionStorage.getItem(STATE_KEY);
       if (!raw) return null;
-      return typeof raw === "string" ? JSON.parse(raw) : raw;
+      return JSON.parse(raw);
     } catch {
       return null;
     }
   }
   function persist(state) {
     try {
-      GM_setValue(STATE_KEY, JSON.stringify(state));
+      sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
     } catch {
     }
   }
@@ -694,7 +692,7 @@
     }
     function leavePaused() {
       engine.stop();
-      persist({ running: false, speed: engine.speed });
+      persist({ speed: engine.speed });
     }
     function showHelp(visible) {
       helpVisible = visible;
@@ -704,8 +702,8 @@
       }
       paint();
     }
-    function savePosition() {
-      persist({ running: engine.running, speed: engine.speed });
+    function saveSpeed() {
+      persist({ speed: engine.speed });
     }
     function scrollToSelected() {
       const element = selection.selectedElement;
@@ -717,15 +715,15 @@
     const ACTIONS2 = {
       toggleScroll() {
         engine.toggle();
-        savePosition();
+        saveSpeed();
       },
       speedUp() {
         engine.adjustSpeed(settings.speed_step);
-        savePosition();
+        saveSpeed();
       },
       speedDown() {
         engine.adjustSpeed(-settings.speed_step);
-        savePosition();
+        saveSpeed();
       },
       openSelected() {
         const post = selection.selected;
@@ -822,10 +820,9 @@
       if (command) handleCommand(command);
     });
     window.addEventListener("popstate", refresh);
-    window.addEventListener("pagehide", savePosition);
+    window.addEventListener("pagehide", saveSpeed);
     setInterval(() => transport.postState(snapshot()), 1e3);
     refresh();
-    if (persisted?.running) engine.start();
     transport.start();
   }
   boot();

@@ -19,11 +19,15 @@ const DEFAULTS = {
   focus_line: 0.25,
 };
 
+// Speed lives in sessionStorage, not GM storage: it should survive opening a
+// thread and coming back, but a brand-new tab is a fresh start that honours
+// config.json's default_speed. Nothing about whether we were scrolling is
+// remembered -- a page must never begin scrolling on its own.
 function loadPersisted() {
   try {
-    const raw = GM_getValue(STATE_KEY, null);
+    const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) return null;
-    return typeof raw === "string" ? JSON.parse(raw) : raw;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -31,7 +35,7 @@ function loadPersisted() {
 
 function persist(state) {
   try {
-    GM_setValue(STATE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
     // Persistence is a nicety; losing it is not worth breaking over.
   }
@@ -108,7 +112,7 @@ function boot() {
   // a page without re-running this script at all.
   function leavePaused() {
     engine.stop();
-    persist({ running: false, speed: engine.speed });
+    persist({ speed: engine.speed });
   }
 
   function showHelp(visible) {
@@ -120,8 +124,8 @@ function boot() {
     paint();
   }
 
-  function savePosition() {
-    persist({ running: engine.running, speed: engine.speed });
+  function saveSpeed() {
+    persist({ speed: engine.speed });
   }
 
   function scrollToSelected() {
@@ -135,15 +139,15 @@ function boot() {
   const ACTIONS = {
     toggleScroll() {
       engine.toggle();
-      savePosition();
+      saveSpeed();
     },
     speedUp() {
       engine.adjustSpeed(settings.speed_step);
-      savePosition();
+      saveSpeed();
     },
     speedDown() {
       engine.adjustSpeed(-settings.speed_step);
-      savePosition();
+      saveSpeed();
     },
     openSelected() {
       const post = selection.selected;
@@ -251,12 +255,11 @@ function boot() {
     if (command) handleCommand(command);
   });
   window.addEventListener("popstate", refresh);
-  window.addEventListener("pagehide", savePosition);
+  window.addEventListener("pagehide", saveSpeed);
 
   setInterval(() => transport.postState(snapshot()), 1000);
 
   refresh();
-  if (persisted?.running) engine.start();
   transport.start();
 }
 

@@ -150,6 +150,11 @@ still green. It needs the Python venv, so run `uv sync` first.
 CI runs all three suites on every push: the daemon on Windows, since the
 hotkey layer is built around Windows scan codes, and the rest on Linux.
 
+[docs/architecture.md](docs/architecture.md) covers why the design is the way
+it is -- long polling rather than a WebSocket, a userscript rather than an
+extension, loopback with no authentication -- and the limitations that come
+with those choices.
+
 Coverage is 100% on the daemon and 97.6% on the userscript modules, enforced
 by thresholds that fail the build. Two things are deliberately excluded: the
 hotkey listener's `start`/`stop`, which install a real machine-wide keyboard

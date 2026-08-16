@@ -64,8 +64,9 @@ follows whatever sits a quarter of the way down the screen; pressing `8` or `2` 
 your choice until it scrolls off.
 
 The hotkey panel lists your *actual* bindings, read from the daemon — so it stays
-correct if you rebind anything. It also appears by itself for six seconds when a page
-loads.
+correct if you rebind anything. With the daemon down it falls back to the defaults,
+which are the keys the in-page handler uses anyway. It also appears by itself for six
+seconds when a page loads.
 
 Nothing is suppressed — your game still receives every one of these keys.
 
@@ -117,5 +118,5 @@ the page does not react, the problem is the transport.
 
 ```bash
 uv run pytest              # daemon tests (67)
-cd userscript && npm test  # userscript tests (124)
+cd userscript && npm test  # userscript tests (128)
 ```

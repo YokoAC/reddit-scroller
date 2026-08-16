@@ -1,6 +1,11 @@
 # Reddit Scroller
 
-[![tests](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml/badge.svg)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
+[![tests](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
+[![coverage](https://img.shields.io/badge/coverage-%E2%89%A595%25-brightgreen)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)](#setup)
+[![browser: Firefox](https://img.shields.io/badge/browser-Firefox-FF7139?logo=firefoxbrowser&logoColor=white)](#setup)
+[![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
 
 Auto-scrolls a Reddit feed in your normal Firefox on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.

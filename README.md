@@ -1,5 +1,7 @@
 # Reddit Scroller
 
+[![tests](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml/badge.svg)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
+
 Auto-scrolls a Reddit feed in your normal Firefox on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
 
@@ -117,6 +119,17 @@ the page does not react, the problem is the transport.
 ## Development
 
 ```bash
-uv run pytest              # daemon tests (67)
-cd userscript && npm test  # userscript tests (128)
+uv run pytest                        # daemon tests
+cd userscript && npm test            # userscript unit tests
+cd userscript && npm run test:integration   # both halves, over real HTTP
 ```
+
+The integration suite starts the real daemon and drives the real transport
+against it over HTTP, substituting only the keyboard hook. Every user-visible
+bug in this project has lived in the seam between the two halves rather than
+inside either one — both were well covered against hand-written stubs of each
+other, which is exactly how the wire contract drifted twice with every test
+still green. It needs the Python venv, so run `uv sync` first.
+
+CI runs all three suites on every push: the daemon on Windows, since the
+hotkey layer is built around Windows scan codes, and the rest on Linux.

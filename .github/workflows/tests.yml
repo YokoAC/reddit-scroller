@@ -1,0 +1,99 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# A new push supersedes an in-flight run for the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  daemon:
+    # Windows is the platform this actually ships on: the hotkey layer is
+    # built around Windows set-1 scan codes, so the daemon suite runs there
+    # even though Windows minutes bill at 2x.
+    name: daemon (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run the daemon tests
+        run: uv run pytest -q
+
+  userscript:
+    name: userscript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: userscript/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: userscript
+
+      - name: Run the userscript tests
+        run: npm test
+        working-directory: userscript
+
+      - name: Rebuild the bundle
+        run: npm run build
+        working-directory: userscript
+
+      - name: The committed bundle must match src
+        # dist/reddit-scroller.user.js is what a user installs, so a stale
+        # commit ships code that does not match this repository.
+        run: |
+          if ! git diff --exit-code -- dist/reddit-scroller.user.js; then
+            echo "::error::dist/reddit-scroller.user.js is stale. Run 'npm run build' in userscript/ and commit the result."
+            exit 1
+          fi
+        working-directory: userscript
+
+  integration:
+    # Drives the real Transport against a real aiohttp daemon over real HTTP.
+    # Every user-visible bug so far lived in this seam rather than in either
+    # half, so this job needs both toolchains. Linux, since nothing here is
+    # platform-specific and Linux minutes bill at 1x.
+    name: integration (both halves)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: userscript/package-lock.json
+
+      - name: Install Python dependencies
+        # Creates the .venv the integration tests spawn their daemon from.
+        run: uv sync --locked
+
+      - name: Install Node dependencies
+        run: npm ci
+        working-directory: userscript
+
+      - name: Run the cross-half integration tests
+        run: npm run test:integration
+        working-directory: userscript

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "test:all": "npm test && npm run test:integration"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

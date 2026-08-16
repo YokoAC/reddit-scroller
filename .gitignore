@@ -18,3 +18,7 @@ node_modules/
 .vscode/
 .idea/
 Thumbs.db
+htmlcov/
+coverage.txt
+.coverage
+userscript/coverage/

@@ -232,7 +232,11 @@ function boot() {
           }, HELP_AUTOSHOW_MS);
         }
       }
-      paint();
+      // refresh(), not paint(): adopting the daemon's focus_line changes which
+      // post is current, so the selection has to be recomputed rather than
+      // merely redrawn. paint() alone left the old selection standing until
+      // the next scroll happened to correct it.
+      refresh();
     },
   });
 

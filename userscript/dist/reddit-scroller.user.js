@@ -805,7 +805,7 @@
             }, HELP_AUTOSHOW_MS);
           }
         }
-        paint();
+        refresh();
       }
     });
     function isTyping(target) {

@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-aiohttp>=1.1",
+    "pytest-cov>=6.0",
 ]
 
 [build-system]
@@ -24,3 +25,19 @@ packages = ["src/reddit_scroller"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/reddit_scroller"]
+
+[tool.coverage.report]
+# start() and stop() install a real, machine-wide keyboard hook, and main()'s
+# signal handling and __main__ guard only run as a process entry point. Neither
+# is reachable from a test that is safe to run on a developer's machine or in
+# CI, so they are excluded rather than left to drag the number down.
+exclude_also = [
+    'if __name__ == .__main__.:',
+    'def start\(self\) -> None:',
+    'def stop\(self\) -> None:',
+]
+fail_under = 95
+show_missing = true

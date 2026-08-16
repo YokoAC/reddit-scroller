@@ -137,3 +137,33 @@ def test_main_does_not_report_a_non_bind_oserror_as_a_bind_failure(
 
     captured = capsys.readouterr()
     assert "could not bind" not in captured.err
+
+
+def test_main_reports_a_bad_config_without_a_traceback(monkeypatch, capsys):
+    from reddit_scroller.config import ConfigError
+
+    def explode(_path):
+        raise ConfigError("speed_step must be positive, got 0")
+
+    monkeypatch.setattr(daemon, "load_config", explode)
+    assert daemon.main() == 1
+    assert "config error" in capsys.readouterr().err
+
+
+def test_main_reports_a_busy_port_helpfully(monkeypatch, capsys):
+    async def unavailable(_config, **_kwargs):
+        raise daemon.PortUnavailableError(8765, OSError("in use"))
+
+    monkeypatch.setattr(daemon, "run", unavailable)
+    assert daemon.main() == 1
+    err = capsys.readouterr().err
+    assert "could not bind 127.0.0.1:8765" in err
+    assert "config.json" in err
+
+
+def test_main_exits_quietly_on_ctrl_c(monkeypatch):
+    async def interrupted(_config, **_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(daemon, "run", interrupted)
+    assert daemon.main() == 0

@@ -120,7 +120,9 @@ the page does not react, the problem is the transport.
 
 ```bash
 uv run pytest                        # daemon tests
+uv run pytest --cov                  # ...with coverage
 cd userscript && npm test            # userscript unit tests
+cd userscript && npm run coverage    # ...with coverage
 cd userscript && npm run test:integration   # both halves, over real HTTP
 ```
 
@@ -133,3 +135,11 @@ still green. It needs the Python venv, so run `uv sync` first.
 
 CI runs all three suites on every push: the daemon on Windows, since the
 hotkey layer is built around Windows scan codes, and the rest on Linux.
+
+Coverage is 100% on the daemon and 97.6% on the userscript modules, enforced
+by thresholds that fail the build. Two things are deliberately excluded: the
+hotkey listener's `start`/`stop`, which install a real machine-wide keyboard
+hook, and `main.js`, which is covered by `tests/main.test.js` but bundled into
+a jsdom window per test so v8 cannot attribute it back to the source file.
+Each CI run prints both coverage tables in its summary and uploads the full
+HTML reports as artifacts.

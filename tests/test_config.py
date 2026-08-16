@@ -170,3 +170,48 @@ def test_browser_settings_carries_the_bindings():
     settings = Config.default().browser_settings()
     assert settings["default_speed"] == 90.0
     assert settings["bindings"]["faster"] == "numpad_plus"
+
+
+def test_an_out_of_range_port_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"port": 70000}))
+    with pytest.raises(ConfigError, match="port"):
+        load_config(path)
+
+
+def test_a_non_positive_speed_min_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"speed_min": 0}))
+    with pytest.raises(ConfigError, match="speed_min"):
+        load_config(path)
+
+
+def test_speed_max_below_speed_min_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"speed_min": 400, "speed_max": 100}))
+    with pytest.raises(ConfigError, match="speed_max"):
+        load_config(path)
+
+
+def test_a_non_positive_speed_step_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"speed_step": 0}))
+    with pytest.raises(ConfigError, match="speed_step"):
+        load_config(path)
+
+
+def test_a_top_level_json_array_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps([1, 2, 3]))
+    with pytest.raises(ConfigError, match="JSON object"):
+        load_config(path)
+
+
+def test_a_non_object_bindings_value_is_rejected(tmp_path):
+    # A stack trace here instead of a named field would be a poor first
+    # experience for someone hand-editing the file.
+    for bad in ("numpad0", [1, 2], 7):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"bindings": bad}))
+        with pytest.raises(ConfigError, match="bindings"):
+            load_config(path)

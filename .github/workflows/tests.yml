@@ -28,8 +28,31 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Run the daemon tests
-        run: uv run pytest -q
+      - name: Run the daemon tests with coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run pytest -q --cov --cov-report=term-missing --cov-report=html \
+            | tee coverage.txt
+
+      - name: Publish the coverage table
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Daemon coverage'
+            echo '```'
+            sed -n '/^Name/,/^Required\|^TOTAL/p' coverage.txt || cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-daemon
+          path: htmlcov/
+          retention-days: 14
 
   userscript:
     name: userscript
@@ -47,9 +70,34 @@ jobs:
         run: npm ci
         working-directory: userscript
 
-      - name: Run the userscript tests
-        run: npm test
+      - name: Run the userscript tests with coverage
+        run: |
+          set -o pipefail
+          npm run coverage | tee coverage.txt
         working-directory: userscript
+
+      - name: Publish the coverage table
+        if: always()
+        working-directory: userscript
+        run: |
+          {
+            echo '## Userscript coverage'
+            echo '```'
+            sed -n '/^ *File *|/,/^-\{5,\}$/p' coverage.txt | tail -n +1
+            echo '```'
+            echo '_main.js is exercised by tests/main.test.js, which bundles it'
+            echo 'and runs it in a jsdom window per test. v8 cannot attribute'
+            echo 'that back to the source file, so it is excluded from the table'
+            echo 'rather than reported as 0%._'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-userscript
+          path: userscript/coverage/
+          retention-days: 14
 
       - name: Rebuild the bundle
         run: npm run build

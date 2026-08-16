@@ -5,6 +5,8 @@
 Auto-scrolls a Reddit feed in your normal Firefox on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
 
+<img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
+
 Two halves:
 
 - A **userscript** that runs inside your real, already-logged-in Firefox. It owns the

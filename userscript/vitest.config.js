@@ -35,11 +35,14 @@ export default defineConfig({
       // with a file the tool is blind to.
       exclude: ["src/main.js"],
       reporter: ["text", "html", "json-summary"],
+      // Every module reads 100%. These sit just below that: high enough
+      // that a real regression fails the build rather than being absorbed
+      // by slack, with enough give that one awkward-to-reach line does not.
       thresholds: {
-        statements: 95,
-        branches: 90,
-        functions: 90,
-        lines: 95,
+        statements: 98,
+        branches: 97,
+        functions: 98,
+        lines: 98,
       },
     },
   },

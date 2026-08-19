@@ -22,3 +22,7 @@ htmlcov/
 coverage.txt
 .coverage
 userscript/coverage/
+
+# Playwright's own output: traces and reports from the cross-browser suite
+userscript/test-results/
+userscript/playwright-report/

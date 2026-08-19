@@ -158,3 +158,88 @@ jobs:
       - name: Run the cross-half integration tests
         run: npm run test:integration
         working-directory: userscript
+
+  browsers:
+    # The bundle in the engines the README promises. Firefox and Chromium run
+    # the same spec against the same daemon, so a behaviour that holds in one
+    # and not the other fails here rather than in someone's feed.
+    name: browsers (Firefox + Chromium)
+    runs-on: ubuntu-latest
+    # Timeouts here are per-step, sized to what each step should take. The
+    # job-level number is only a backstop: it sits above the sum of the step
+    # budgets so a step always fails first. That matters because a job killed
+    # by its own timeout is *cancelled*, and a cancelled job skips straight
+    # past the step that uploads the traces -- losing the evidence exactly
+    # when something has gone wrong.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: userscript/package-lock.json
+
+      - name: Install Python dependencies
+        # The specs spawn their daemon from this .venv.
+        run: uv sync --locked
+
+      - name: Install Node dependencies
+        run: npm ci
+        working-directory: userscript
+
+      - name: Cache the browser binaries
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          # The lockfile pins @playwright/test, and the browser build a given
+          # Playwright release downloads is fixed -- so this changes exactly
+          # when the browsers would.
+          key: playwright-${{ runner.os }}-${{ hashFiles('userscript/package-lock.json') }}
+
+      - name: Install the browsers and their system dependencies
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        # Two to three minutes when the mirrors are healthy, download and all.
+        # Eight tolerates a slow day; past that the runner's apt is broken and
+        # waiting longer will not fix it.
+        timeout-minutes: 8
+        run: npx playwright install --with-deps firefox chromium
+        working-directory: userscript
+
+      - name: Install the browser system dependencies
+        # The cache restores the binaries but not the apt packages they link
+        # against, so this still runs on a hit. It is the slow half and it
+        # cannot be cached; the timeout above is what bounds it.
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 8
+        run: npx playwright install-deps firefox chromium
+        working-directory: userscript
+
+      - name: Run the cross-browser tests
+        # Around four minutes for twenty specs across two engines. The ceiling
+        # is what a wholly broken run costs: every spec hitting its own 60s
+        # timeout, then retried once in CI, is forty minutes of a machine
+        # telling us something we knew in the first two.
+        timeout-minutes: 12
+        run: npm run test:browser
+        working-directory: userscript
+
+      - name: Upload the traces
+        # always(), not failure(): a step killed by its timeout cancels the
+        # job, and failure() does not run on a cancelled job. This is the one
+        # step that must survive that, since the traces are the whole record
+        # of what the browser was doing.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: userscript/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

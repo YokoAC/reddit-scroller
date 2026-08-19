@@ -1,5 +1,7 @@
 import { build } from "esbuild";
 
+import { BUILD_TARGET } from "./build-target.js";
+
 const BANNER = `// ==UserScript==
 // @name         Reddit Scroller
 // @namespace    local.reddit-scroller
@@ -18,7 +20,7 @@ await build({
   outfile: "dist/reddit-scroller.user.js",
   bundle: true,
   format: "iife",
-  target: "firefox115",
+  target: BUILD_TARGET,
   banner: { js: BANNER },
   legalComments: "none",
 });

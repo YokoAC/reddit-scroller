@@ -158,3 +158,42 @@ describe("Hud help panel", () => {
     ).not.toThrow();
   });
 });
+
+describe("Hud remounting", () => {
+  it("reuses the stylesheet an earlier mount left in the head", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.unmount();
+    hud.mount();
+    expect(document.querySelectorAll("style#rs-style")).toHaveLength(1);
+    expect(document.querySelectorAll(`#${HUD_ID}`)).toHaveLength(1);
+  });
+
+  it("unmounting a second time is harmless", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    hud.unmount();
+    hud.unmount();
+    expect(document.querySelectorAll(`#${HUD_ID}`)).toHaveLength(0);
+  });
+
+  it("renders into an adopted panel that predates the help row", () => {
+    // What a previous version of the script would have left on the page:
+    // every node render() writes to, but no help element behind it.
+    document.body.innerHTML = `
+      <div id="${HUD_ID}">
+        <span class="rs-status"></span>
+        <span class="rs-daemon"></span>
+        <span class="rs-speed"></span>
+        <span class="rs-bar"></span>
+        <div class="rs-mode"></div>
+        <div class="rs-sub"></div>
+        <div class="rs-title"></div>
+        <div class="rs-flash"></div>
+      </div>`;
+    const hud = new Hud(document);
+    hud.mount();
+    hud.render(STATE);
+    expect(document.querySelector(".rs-title").textContent).toContain("Hello");
+  });
+});

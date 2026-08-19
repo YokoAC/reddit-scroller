@@ -155,7 +155,7 @@ it is -- long polling rather than a WebSocket, a userscript rather than an
 extension, loopback with no authentication -- and the limitations that come
 with those choices.
 
-Coverage is 100% on the daemon and 97.6% on the userscript modules, enforced
+Coverage is 100% on both the daemon and the userscript modules, enforced
 by thresholds that fail the build. Two things are deliberately excluded: the
 hotkey listener's `start`/`stop`, which install a real machine-wide keyboard
 hook, and `main.js`, which is covered by `tests/main.test.js` but bundled into

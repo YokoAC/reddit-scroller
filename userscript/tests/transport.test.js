@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { nextBackoff, Transport } from "../src/transport.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { gmRequest, nextBackoff, Transport } from "../src/transport.js";
 
 function harness({ responses }) {
   const calls = [];
@@ -280,5 +280,63 @@ describe("Transport starts from the present", () => {
     await h.transport.start();
     expect(h.calls[1].url).toContain("cursor=10");
     expect(h.calls[2].url).toContain("cursor=11");
+  });
+});
+
+describe("gmRequest", () => {
+  // GM_xmlhttpRequest only exists inside a userscript manager. The adapter is
+  // the one piece of the transport that talks to it, so it is exercised
+  // against a stub that keeps whatever options it was handed and lets each
+  // test fire the callback it cares about.
+  function stubManager() {
+    const calls = [];
+    vi.stubGlobal("GM_xmlhttpRequest", (options) => {
+      calls.push(options);
+    });
+    return calls;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("resolves with the status and body once onload fires", async () => {
+    const calls = stubManager();
+    const pending = gmRequest({ method: "GET", url: "http://x/health" });
+    calls[0].onload({ status: 200, responseText: '{"ok":true}' });
+    await expect(pending).resolves.toEqual({
+      status: 200,
+      text: '{"ok":true}',
+    });
+  });
+
+  it("declares a JSON content type when there is a body", () => {
+    const calls = stubManager();
+    gmRequest({ method: "POST", url: "http://x/state", body: '{"speed":300}' });
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].data).toBe('{"speed":300}');
+    expect(calls[0].headers).toEqual({ "Content-Type": "application/json" });
+  });
+
+  it("sends no headers at all when there is no body", () => {
+    const calls = stubManager();
+    gmRequest({ method: "GET", url: "http://x/health" });
+    expect(calls[0].headers).toBeUndefined();
+  });
+
+  it("rejects, naming the url, when the request fails", async () => {
+    const calls = stubManager();
+    const pending = gmRequest({ method: "GET", url: "http://x/health" });
+    calls[0].onerror();
+    await expect(pending).rejects.toThrow("request to http://x/health failed");
+  });
+
+  it("rejects, naming the url, when the request times out", async () => {
+    const calls = stubManager();
+    const pending = gmRequest({ method: "GET", url: "http://x/health" });
+    calls[0].ontimeout();
+    await expect(pending).rejects.toThrow(
+      "request to http://x/health timed out",
+    );
   });
 });

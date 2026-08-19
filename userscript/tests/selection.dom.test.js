@@ -195,3 +195,55 @@ describe("Selection", () => {
     expect(sel.selected).toBeNull();
   });
 });
+
+describe("Selection edges", () => {
+  it("exposes the focus line it was configured with", () => {
+    buildFeed();
+    expect(makeSelection().focusLine).toBe(0.25);
+  });
+
+  it("treats a post with no title attribute as having an empty title", () => {
+    document.body.innerHTML =
+      '<shreddit-post permalink="/r/a/comments/1/one/"></shreddit-post>';
+    expect(readPosts(document)[0].title).toBe("");
+  });
+
+  it("moving backwards with nothing in view starts at the first post", () => {
+    buildFeed();
+    // Everything has been scrolled off the top, so refresh() ranks nothing
+    // and the selection is left empty -- the state a reader reaches by
+    // scrolling past the whole feed before pressing prev.
+    document.querySelectorAll("shreddit-post").forEach((element) => {
+      element.getBoundingClientRect = () => ({
+        top: -600,
+        bottom: -400,
+        left: 0,
+        right: 500,
+        width: 500,
+        height: 200,
+      });
+    });
+    const selection = makeSelection();
+    selection.refresh();
+    expect(selection.selected).toBeNull();
+    selection.move(-1);
+    expect(selection.selected.permalink).toBe(POSTS[0].permalink);
+  });
+
+  it("leaves the highlight in place when applied twice", () => {
+    buildFeed();
+    const selection = makeSelection();
+    selection.refresh();
+    selection.applyHighlight();
+    selection.applyHighlight();
+    expect(document.querySelectorAll(`.${HIGHLIGHT_CLASS}`)).toHaveLength(1);
+  });
+
+  it("highlights nothing when the feed is empty", () => {
+    buildFeed([]);
+    const selection = makeSelection();
+    selection.refresh();
+    selection.applyHighlight();
+    expect(document.querySelectorAll(`.${HIGHLIGHT_CLASS}`)).toHaveLength(0);
+  });
+});

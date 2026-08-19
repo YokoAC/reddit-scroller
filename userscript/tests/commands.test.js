@@ -116,3 +116,9 @@ describe("resolveAction covers every command in both modes", () => {
     expect(resolveAction(command, "thread")).toBe(thread);
   });
 });
+
+describe("resolveAction on input it does not recognise", () => {
+  it("is a noop for a command that exists in a mode it does not cover", () => {
+    expect(resolveAction("toggle", "settings")).toBe("noop");
+  });
+});

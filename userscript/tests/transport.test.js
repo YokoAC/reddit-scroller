@@ -340,3 +340,19 @@ describe("gmRequest", () => {
     );
   });
 });
+
+describe("Transport settings", () => {
+  it("treats a health response with no settings as empty settings", async () => {
+    const h = harness({
+      responses: [
+        ok({ ok: true, cursor: 0 }),
+        () => {
+          h.transport.stop();
+          return ok({ cursor: 0, events: [] });
+        },
+      ],
+    });
+    await h.transport.start();
+    expect(h.transport.settings).toEqual({});
+  });
+});

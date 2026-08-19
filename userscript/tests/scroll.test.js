@@ -32,6 +32,10 @@ describe("clampSpeed", () => {
   it("clamps above the maximum", () => {
     expect(clampSpeed(9000, 15, 600)).toBe(600);
   });
+
+  it("falls back to the minimum when handed something that is not a number", () => {
+    expect(clampSpeed(Number.NaN, 15, 600)).toBe(15);
+  });
 });
 
 describe("ScrollEngine", () => {
@@ -224,5 +228,37 @@ describe("ScrollEngine direction", () => {
     expect(moves).toEqual([]); // a carried +0.5 would have produced -0/+1 noise
     engine.tick(46.875);
     expect(moves).toEqual([-1]);
+  });
+});
+
+describe("ScrollEngine frame plumbing", () => {
+  it("exposes the step it was configured with", () => {
+    const { engine } = makeEngine();
+    expect(engine.step).toBe(15);
+  });
+
+  it("stopping an engine that never ran reports it as stopped", () => {
+    const { engine } = makeEngine();
+    expect(engine.stop()).toBe(false);
+    expect(engine.running).toBe(false);
+  });
+
+  it("re-arms itself through the callback it hands the browser", () => {
+    const { engine, moves, frames } = makeEngine();
+    engine.start();
+    // The other tests call tick() directly. Driving the engine through the
+    // queued callback instead is what proves it keeps asking for the next
+    // frame rather than stopping after the first one.
+    frames.at(-1)(1000);
+    frames.at(-1)(1100);
+    expect(moves).toEqual([10]);
+    expect(frames).toHaveLength(3);
+  });
+
+  it("stops cleanly when the frame handle came back null", () => {
+    const { engine } = makeEngine({ requestFrame: () => null });
+    engine.start();
+    expect(engine.stop()).toBe(false);
+    expect(engine.running).toBe(false);
   });
 });

@@ -165,6 +165,11 @@ jobs:
     # and not the other fails here rather than in someone's feed.
     name: browsers (Firefox + Chromium)
     runs-on: ubuntu-latest
+    # This job installs apt packages, and a runner whose mirror is unreachable
+    # sits in apt-get retries rather than failing. Left on the 360-minute
+    # default that burns hours of the budget before anyone finds out; observed
+    # once at 25 minutes with the step still crawling.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -187,8 +192,27 @@ jobs:
         run: npm ci
         working-directory: userscript
 
-      - name: Install the browsers
+      - name: Cache the browser binaries
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          # The lockfile pins @playwright/test, and the browser build a given
+          # Playwright release downloads is fixed -- so this changes exactly
+          # when the browsers would.
+          key: playwright-${{ runner.os }}-${{ hashFiles('userscript/package-lock.json') }}
+
+      - name: Install the browsers and their system dependencies
+        if: steps.browser-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps firefox chromium
+        working-directory: userscript
+
+      - name: Install the browser system dependencies
+        # The cache restores the binaries but not the apt packages they link
+        # against, so this still runs on a hit. It is the slow half and it
+        # cannot be cached; the timeout above is what bounds it.
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps firefox chromium
         working-directory: userscript
 
       - name: Run the cross-browser tests

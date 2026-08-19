@@ -7,13 +7,15 @@
     "build": "node build.mjs",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.js",
-    "test:all": "npm test && npm run test:integration",
+    "test:browser": "playwright test",
+    "test:all": "npm test && npm run test:integration && npm run test:browser",
     "coverage": "vitest run --coverage",
     "lint": "biome check .",
     "lint:fix": "biome check --write ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
+    "@playwright/test": "^1.62.1",
     "@vitest/coverage-v8": "^4.1.10",
     "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",

@@ -18,6 +18,8 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { BUILD_TARGET } from "../build-target.js";
+
 let BUNDLE;
 
 beforeAll(async () => {
@@ -25,7 +27,7 @@ beforeAll(async () => {
     entryPoints: ["src/main.js"],
     bundle: true,
     format: "iife",
-    target: "firefox115",
+    target: BUILD_TARGET,
     write: false,
   });
   BUNDLE = result.outputFiles[0].text;

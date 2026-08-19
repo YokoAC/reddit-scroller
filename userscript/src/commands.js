@@ -22,7 +22,7 @@ export function resolveAction(command, mode) {
   return byMode[mode] || "noop";
 }
 
-// Used only when Firefox itself has focus. The daemon covers the case that
+// Used only when the browser itself has focus. The daemon covers the case that
 // matters — the game holding focus — but this makes the script usable and
 // testable on its own.
 const KEY_CODES = {

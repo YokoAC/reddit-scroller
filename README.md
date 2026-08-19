@@ -4,21 +4,23 @@
 [![coverage](https://img.shields.io/badge/coverage-%E2%89%A595%25-brightgreen)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)](#setup)
-[![browser: Firefox](https://img.shields.io/badge/browser-Firefox-FF7139?logo=firefoxbrowser&logoColor=white)](#setup)
+[![browser: Firefox](https://img.shields.io/badge/Firefox-supported-FF7139?logo=firefoxbrowser&logoColor=white)](#browser-support)
+[![browser: Chrome](https://img.shields.io/badge/Chrome-supported-4285F4?logo=googlechrome&logoColor=white)](#browser-support)
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2)](https://mypy-lang.org/)
 [![biome](https://img.shields.io/badge/checked_with-biome-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev/)
 
-Auto-scrolls a Reddit feed in your normal Firefox on a second monitor, driven by
+Auto-scrolls a Reddit feed in your normal browser on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
 
 <img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
 
 Two halves:
 
-- A **userscript** that runs inside your real, already-logged-in Firefox. It owns the
-  scrolling, decides which post is "current", and draws the on-screen readout.
+- A **userscript** that runs inside your real, already-logged-in Firefox or Chrome.
+  It owns the scrolling, decides which post is "current", and draws the on-screen
+  readout.
 - A **Python daemon** that owns the global keyboard hook and hands commands to the
   userscript over `127.0.0.1`.
 
@@ -35,7 +37,10 @@ Leave it running. It prints its bindings on start.
 
 **2. The userscript**
 
-1. Install [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/).
+1. Install Violentmonkey — for
+   [Firefox](https://addons.mozilla.org/firefox/addon/violentmonkey/) or for
+   [Chrome](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag).
+   Tampermonkey works too; the script uses nothing specific to either.
 2. Build the script: `cd userscript && npm install && npm run build`
 3. Open the Violentmonkey dashboard → **+** → **Install from file**, and pick
    `userscript/dist/reddit-scroller.user.js`.
@@ -44,6 +49,21 @@ Leave it running. It prints its bindings on start.
 
 The built file is already committed, so installing it does not require the build
 step — but rerun `npm run build` and reinstall the file if you change the source.
+
+## Browser support
+
+Firefox and Chrome both work, and both are tested: `npm run test:browser` runs the
+built bundle in real Firefox and real Chromium against a real daemon, and CI runs
+that suite on every push. Nothing in the page half is engine-specific, and the
+daemon never learns which browser it is talking to.
+
+One hop those tests have to substitute, so check it once on a browser you have not
+used this on before: `GM_xmlhttpRequest` from an `https://www.reddit.com` page to
+`http://127.0.0.1`. That request is issued by the userscript manager's extension
+rather than by the page, which is what keeps it clear of mixed-content and CORS
+rules — but a browser may still apply a policy of its own to extension traffic
+aimed at the local network, and could prompt for it or refuse it. A green dot next
+to "daemon" in the HUD means it went through.
 
 ## Controls
 
@@ -106,8 +126,11 @@ the committed template.
 
 ## Troubleshooting
 
-**The HUD says "no daemon".** The daemon is not running, or it is on a different port
-than the userscript expects. Check `uv run python -m reddit_scroller` is up and that
+**The HUD says "no daemon".** The daemon is not running, it is on a different port
+than the userscript expects, or the browser is blocking the userscript manager's
+request to `127.0.0.1` — see [Browser support](#browser-support), and check the
+manager's own console for a refused or pending local-network request. Otherwise
+check `uv run python -m reddit_scroller` is up and that
 `PORT` at the top of `userscript/src/main.js` matches `port` in your `config.json` —
 these are two independent values and changing one without the other breaks the
 connection. If you change `PORT`, rebuild the userscript (`npm run build`) and
@@ -138,6 +161,7 @@ uv run pytest --cov                  # ...with coverage
 cd userscript && npm test            # userscript unit tests
 cd userscript && npm run coverage    # ...with coverage
 cd userscript && npm run test:integration   # both halves, over real HTTP
+cd userscript && npm run test:browser       # the bundle in Firefox and Chromium
 ```
 
 The integration suite starts the real daemon and drives the real transport
@@ -147,8 +171,21 @@ inside either one — both were well covered against hand-written stubs of each
 other, which is exactly how the wire contract drifted twice with every test
 still green. It needs the Python venv, so run `uv sync` first.
 
-CI runs all three suites on every push: the daemon on Windows, since the
-hotkey layer is built around Windows scan codes, and the rest on Linux.
+The browser suite answers the question jsdom cannot: whether the engines agree.
+It compiles the bundle from `src`, loads it into real Firefox and real Chromium
+through Playwright as a manager would, and asserts the things that depend on a
+real engine — that the window actually scrolls at the configured rate, that
+layout puts the selected post on the focus line, that speed survives a
+navigation, and that `KeyboardEvent.code` carries the numpad names the fallback
+handler expects. It needs the venv too, plus `npx playwright install`.
+
+Playwright's Firefox build does not start on every Windows machine — it is an
+unsigned, patched build, and some configurations refuse to load its private
+`mozglue` assembly. If it fails there, run `npm run test:browser -- --project=chromium`
+locally; the CI job runs both engines on Linux either way.
+
+CI runs all four suites on every push: the daemon on Windows, since the hotkey
+layer is built around Windows scan codes, and the rest on Linux.
 
 [docs/architecture.md](docs/architecture.md) covers why the design is the way
 it is -- long polling rather than a WebSocket, a userscript rather than an

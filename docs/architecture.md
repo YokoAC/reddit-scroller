@@ -7,7 +7,7 @@ alternatives were rejected.
 ## Two processes
 
 ```
-┌─ Firefox (monitor 2) ────────┐        ┌─ Python daemon ──────────────┐
+┌─ Browser (monitor 2) ────────┐        ┌─ Python daemon ──────────────┐
 │  https://www.reddit.com      │        │                              │
 │  userscript (Violentmonkey)  │ ◀─────▶│  HTTP server 127.0.0.1:8765  │
 │   scroll engine              │  long- │   GET  /health               │
@@ -22,16 +22,19 @@ Commands flow down, state flows up.
 
 ## The decisions that matter
 
-### A userscript in your own Firefox, not an automated browser
+### A userscript in your own browser, not an automated one
 
 The obvious approach — Playwright or similar driving its own browser — forces
-you to copy cookies and localStorage out of the real Firefox profile just to
+you to copy cookies and localStorage out of the real browser profile just to
 stay logged in. That sync layer is most of the complexity, and it exists only
 because the automated browser is not the browser you are already signed in to.
 Running inside the real one removes the problem rather than solving it.
 
 The cost is that Firefox will not permanently install an unsigned extension,
-hence a userscript under Violentmonkey rather than a packaged add-on.
+hence a userscript under Violentmonkey rather than a packaged add-on. That
+choice also made the browser interchangeable: nothing in the page half is
+engine-specific, and Chrome is supported on the same terms. The cross-browser
+suite (`npm run test:browser`) runs the bundle in both.
 
 ### Long polling, not a WebSocket
 
@@ -43,7 +46,10 @@ neither mixed-content blocked nor CORS-restricted.
 This was verified against a real daemon in Firefox before any other code was
 written: a `GM_xmlhttpRequest` GET from reddit.com to `http://127.0.0.1:8765`
 returns 200, and the server logs no `Origin` header — confirming it came from
-the extension rather than the page.
+the extension rather than the page. It is the one part the browser suite has to
+substitute, since Playwright has no userscript manager to run it in; a browser
+that applies its own policy to extension traffic bound for the local network
+would show up here and nowhere else.
 
 The server holds an `/events` request for up to 25 seconds; the client's own
 timeout is 40, so an idle poll never fails spuriously.

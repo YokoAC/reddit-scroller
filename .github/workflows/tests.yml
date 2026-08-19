@@ -158,3 +158,47 @@ jobs:
       - name: Run the cross-half integration tests
         run: npm run test:integration
         working-directory: userscript
+
+  browsers:
+    # The bundle in the engines the README promises. Firefox and Chromium run
+    # the same spec against the same daemon, so a behaviour that holds in one
+    # and not the other fails here rather than in someone's feed.
+    name: browsers (Firefox + Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: userscript/package-lock.json
+
+      - name: Install Python dependencies
+        # The specs spawn their daemon from this .venv.
+        run: uv sync --locked
+
+      - name: Install Node dependencies
+        run: npm ci
+        working-directory: userscript
+
+      - name: Install the browsers
+        run: npx playwright install --with-deps firefox chromium
+        working-directory: userscript
+
+      - name: Run the cross-browser tests
+        run: npm run test:browser
+        working-directory: userscript
+
+      - name: Upload the failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: userscript/test-results/
+          retention-days: 14

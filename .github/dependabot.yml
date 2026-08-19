@@ -5,36 +5,34 @@ version: 2
 # integration tests, and the check that the committed bundle still matches
 # src. A green PR is therefore a bump that has already proved itself, which
 # is the whole return on having built that pipeline.
+#
+# Everything runs monthly, and each ecosystem groups every update type into a
+# single pull request. Dependabot never groups across ecosystems, so a busy
+# month is at most three PRs: one for uv, one for npm, one for the actions.
+# Drop `update-types` back onto a group if majors start needing to arrive on
+# their own, with a changelog read attached.
 updates:
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
     groups:
-      # One PR for the routine bumps, individual PRs for majors -- those are
-      # the ones worth reading a changelog for.
-      python-minor-and-patch:
+      python:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
 
   - package-ecosystem: "npm"
     directory: "/userscript"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
     groups:
-      userscript-minor-and-patch:
+      userscript:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

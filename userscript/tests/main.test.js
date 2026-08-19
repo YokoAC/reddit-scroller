@@ -188,7 +188,7 @@ class Page {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       const text = this.hud(".rs-daemon");
-      if (text && !text.includes("no daemon") === connected) return;
+      if (text && !text.includes("browser only") === connected) return;
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error(
@@ -269,12 +269,12 @@ describe("booting on a feed", () => {
   it("reports the daemon connection once polling succeeds", async () => {
     page = await Page.open();
     expect(page.hud(".rs-daemon")).toContain("daemon");
-    expect(page.hud(".rs-daemon")).not.toContain("no daemon");
+    expect(page.hud(".rs-daemon")).not.toContain("browser only");
   });
 
   it("says so when the daemon is unreachable", async () => {
     page = await Page.open({ daemonUp: false });
-    expect(page.hud(".rs-daemon")).toContain("no daemon");
+    expect(page.hud(".rs-daemon")).toContain("browser only");
   });
 
   it("detects thread mode from the URL", async () => {

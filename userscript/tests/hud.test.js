@@ -93,7 +93,7 @@ describe("formatHud", () => {
     expect(formatHud(BASE).daemon).toBe("daemon");
     expect(formatHud(BASE).daemonClass).toBe("rs-online");
     const off = formatHud({ ...BASE, daemonConnected: false });
-    expect(off.daemon).toBe("no daemon");
+    expect(off.daemon).toBe("browser only");
     expect(off.daemonClass).toBe("rs-offline");
   });
 

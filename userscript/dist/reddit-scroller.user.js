@@ -184,7 +184,8 @@
 #${HUD_ID} .rs-running { color: #56d364; }
 #${HUD_ID} .rs-paused { color: #e3b341; }
 #${HUD_ID} .rs-online { color: #56d364; font-size: 14px; }
-#${HUD_ID} .rs-offline { color: #f85149; font-size: 14px; }
+/* Amber, not red: the script is working, it is simply doing it alone. */
+#${HUD_ID} .rs-offline { color: #e3b341; font-size: 14px; }
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -289,7 +290,11 @@
       mode: state.mode.toUpperCase(),
       subreddit,
       title,
-      daemon: state.daemonConnected ? "daemon" : "no daemon",
+      // "browser only" rather than "no daemon": every key still works, just
+      // not while another window has focus. Naming the mode that is running
+      // beats naming the half that is missing, and the amber says degraded
+      // rather than broken.
+      daemon: state.daemonConnected ? "daemon" : "browser only",
       daemonClass: state.daemonConnected ? "rs-online" : "rs-offline",
       flash: state.lastCommand ? state.lastCommand.toUpperCase() : ""
     };

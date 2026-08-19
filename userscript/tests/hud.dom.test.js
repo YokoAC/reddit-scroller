@@ -57,7 +57,7 @@ describe("Hud", () => {
     expect(text).toContain("90 px/s");
     expect(text).toContain("FEED");
     expect(text).toContain("r/test");
-    expect(text).toContain("no daemon");
+    expect(text).toContain("browser only");
   });
 
   it("renders titles as text, never as markup", () => {

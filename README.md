@@ -50,6 +50,22 @@ Leave it running. It prints its bindings on start.
 The built file is already committed, so installing it does not require the build
 step — but rerun `npm run build` and reinstall the file if you change the source.
 
+### Without the daemon
+
+The userscript works on its own, and if you never intend to alt-tab away you can
+stop after step 2 and skip Python entirely. Every key in the table below does the
+same thing, handled in the page.
+
+What the daemon adds is the one thing a page cannot do: receive those keys while
+*another window* has focus. Without it the numpad goes to whatever you alt-tabbed
+into, and the feed stops responding — which is the entire reason this project has
+a second half.
+
+The HUD names which of the two is driving. **`● daemon`** in green means the
+daemon is; **`● browser only`** in amber means the page is, and that the hotkey
+panel is showing built-in defaults rather than your `config.json`. Amber, not red:
+nothing is broken in that state.
+
 ## Browser support
 
 Firefox and Chrome both work, and both are tested: `npm run test:browser` runs the
@@ -126,10 +142,13 @@ the committed template.
 
 ## Troubleshooting
 
-**The HUD says "no daemon".** The daemon is not running, it is on a different port
-than the userscript expects, or the browser is blocking the userscript manager's
-request to `127.0.0.1` — see [Browser support](#browser-support), and check the
-manager's own console for a refused or pending local-network request. Otherwise
+**The HUD says "browser only" and the keys still work.** That is the documented
+fallback, not a failure — see [Without the daemon](#without-the-daemon). The keys
+are being handled in the page, and they will stop the moment another window takes
+focus. The daemon is not running, it is on a different port than the userscript
+expects, or the browser is blocking the userscript manager's request to
+`127.0.0.1` — see [Browser support](#browser-support), and check the manager's own
+console for a refused or pending local-network request. Otherwise
 check `uv run python -m reddit_scroller` is up and that
 `PORT` at the top of `userscript/src/main.js` matches `port` in your `config.json` —
 these are two independent values and changing one without the other breaks the

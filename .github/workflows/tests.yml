@@ -165,10 +165,12 @@ jobs:
     # and not the other fails here rather than in someone's feed.
     name: browsers (Firefox + Chromium)
     runs-on: ubuntu-latest
-    # This job installs apt packages, and a runner whose mirror is unreachable
-    # sits in apt-get retries rather than failing. Left on the 360-minute
-    # default that burns hours of the budget before anyone finds out; observed
-    # once at 25 minutes with the step still crawling.
+    # Timeouts here are per-step, sized to what each step should take. The
+    # job-level number is only a backstop: it sits above the sum of the step
+    # budgets so a step always fails first. That matters because a job killed
+    # by its own timeout is *cancelled*, and a cancelled job skips straight
+    # past the step that uploads the traces -- losing the evidence exactly
+    # when something has gone wrong.
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
@@ -204,6 +206,10 @@ jobs:
 
       - name: Install the browsers and their system dependencies
         if: steps.browser-cache.outputs.cache-hit != 'true'
+        # Two to three minutes when the mirrors are healthy, download and all.
+        # Eight tolerates a slow day; past that the runner's apt is broken and
+        # waiting longer will not fix it.
+        timeout-minutes: 8
         run: npx playwright install --with-deps firefox chromium
         working-directory: userscript
 
@@ -212,17 +218,28 @@ jobs:
         # against, so this still runs on a hit. It is the slow half and it
         # cannot be cached; the timeout above is what bounds it.
         if: steps.browser-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 8
         run: npx playwright install-deps firefox chromium
         working-directory: userscript
 
       - name: Run the cross-browser tests
+        # Around four minutes for twenty specs across two engines. The ceiling
+        # is what a wholly broken run costs: every spec hitting its own 60s
+        # timeout, then retried once in CI, is forty minutes of a machine
+        # telling us something we knew in the first two.
+        timeout-minutes: 12
         run: npm run test:browser
         working-directory: userscript
 
-      - name: Upload the failure traces
-        if: failure()
+      - name: Upload the traces
+        # always(), not failure(): a step killed by its timeout cancels the
+        # job, and failure() does not run on a cancelled job. This is the one
+        # step that must survive that, since the traces are the whole record
+        # of what the browser was doing.
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: userscript/test-results/
+          if-no-files-found: ignore
           retention-days: 14

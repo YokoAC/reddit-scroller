@@ -1,7 +1,18 @@
 name: tests
 
 on:
+  # A commit on a branch is already covered by its pull request, so listening
+  # to both events ran every job twice for the same tree -- eight checks per
+  # PR, the Windows one billing at 2x for the privilege. The two runs cannot
+  # cancel each other either: the concurrency group below keys on github.ref,
+  # which is refs/heads/<branch> for a push and refs/pull/<n>/merge for a
+  # pull request, so they land in different groups by construction.
+  #
+  # The cost is that a branch with no pull request open gets no CI. That is
+  # the intended trade: work in progress is not what the pipeline is for, and
+  # workflow_dispatch is still here for the occasional exception.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

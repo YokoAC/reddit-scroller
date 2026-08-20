@@ -1,7 +1,7 @@
 /**
  * Tests for main.js -- the assembly layer.
  *
- * Every module main.js wires together sits at 89-100% coverage and has
+ * Every module main.js wires together is thoroughly covered and has
  * produced almost no defects. main.js had none, and shipped four of the bugs
  * that reached the user: an empty help panel, every keypress firing twice,
  * a page that resumed scrolling on its own, and a configured default_speed

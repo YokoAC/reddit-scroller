@@ -1,10 +1,11 @@
 version: 2
 
 # Every update opens a pull request that runs the full gauntlet: ruff, ruff
-# format, mypy --strict, biome, 78 daemon tests, 169 userscript tests, 9
-# integration tests, and the check that the committed bundle still matches
-# src. A green PR is therefore a bump that has already proved itself, which
-# is the whole return on having built that pipeline.
+# format, mypy --strict, biome, the daemon suite, the userscript suite, the
+# cross-half integration tests, the cross-browser tests, and the check that
+# the committed bundle still matches src. A green PR is therefore a bump that
+# has already proved itself, which is the whole return on having built that
+# pipeline.
 #
 # Everything runs monthly, and each ecosystem groups every update type into a
 # single pull request. Dependabot never groups across ecosystems, so a busy

@@ -211,10 +211,16 @@ it is -- long polling rather than a WebSocket, a userscript rather than an
 extension, loopback with no authentication -- and the limitations that come
 with those choices.
 
-Coverage is 100% on both the daemon and the userscript modules, enforced
-by thresholds that fail the build. Two things are deliberately excluded: the
-hotkey listener's `start`/`stop`, which install a real machine-wide keyboard
-hook, and `main.js`, which is covered by `tests/main.test.js` but bundled into
-a jsdom window per test so v8 cannot attribute it back to the source file.
+Coverage is gated on both halves -- `fail_under` in `pyproject.toml` and
+`thresholds` in `userscript/vitest.config.js` -- and the build fails when it
+slips below them. Both sit a little under what the suites actually reach, so
+one awkward-to-cover line cannot break an unrelated change. That gate is the
+number worth knowing, and it lives in those two files rather than being
+quoted here, where nothing would keep it honest.
+
+Two things are deliberately excluded: the hotkey listener's `start`/`stop`,
+which install a real machine-wide keyboard hook, and `main.js`, which is
+covered by `tests/main.test.js` but bundled into a jsdom window per test so
+v8 cannot attribute it back to the source file.
 Each CI run prints both coverage tables in its summary and uploads the full
 HTML reports as artifacts.

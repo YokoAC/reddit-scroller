@@ -7,9 +7,6 @@
 [![browser: Firefox](https://img.shields.io/badge/Firefox-supported-FF7139?logo=firefoxbrowser&logoColor=white)](#browser-support)
 [![browser: Chrome](https://img.shields.io/badge/Chrome-supported-4285F4?logo=googlechrome&logoColor=white)](#browser-support)
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
-[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2)](https://mypy-lang.org/)
-[![biome](https://img.shields.io/badge/checked_with-biome-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev/)
 
 Auto-scrolls a Reddit feed in your normal browser on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
@@ -26,45 +23,64 @@ Two halves:
 
 ## Setup
 
-**1. The daemon**
+**1. The userscript**
+
+1. Install Violentmonkey — for
+   [Firefox](https://addons.mozilla.org/firefox/addon/violentmonkey/) or for
+   [Chrome](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag).
+   Tampermonkey works too; the script uses nothing specific to either.
+2. Open the script itself:
+   **[reddit-scroller.user.js](https://raw.githubusercontent.com/YokoAC/reddit-scroller/main/userscript/dist/reddit-scroller.user.js)**
+   — Violentmonkey recognises the `.user.js` name and offers to install it.
+3. Open `https://www.reddit.com`. The HUD appears bottom-right.
+
+That is the whole install, and it is already usable: the numpad scrolls the
+feed whenever the browser has focus. No Python, no Node.
+
+**2. The daemon** — optional, and only for the case a page cannot cover
+
+A web page only receives keys while it has focus. The daemon hooks the
+keyboard globally, so the numpad still works with a full-screen game in front.
+That is the only thing it adds.
 
 ```bash
 uv sync
 uv run python -m reddit_scroller
 ```
 
-Leave it running. It prints its bindings on start.
+Leave it running; it prints its bindings on start. The HUD's dot turns green
+within a few seconds — no reload needed.
 
-**2. The userscript**
+It is a global keyboard hook, so it is worth saying plainly what it does. It
+reads only the scan codes it is bound to; any other key is dropped in
+`handle_press` before anything is stored, printed or sent. Nothing is written
+to disk, nothing leaves `127.0.0.1`, and nothing is suppressed — whatever has
+focus still receives every key you press. That is all of
+[`hotkeys.py`](src/reddit_scroller/hotkeys.py), which is short on purpose.
 
-1. Install Violentmonkey — for
-   [Firefox](https://addons.mozilla.org/firefox/addon/violentmonkey/) or for
-   [Chrome](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag).
-   Tampermonkey works too; the script uses nothing specific to either.
-2. Build the script: `cd userscript && npm install && npm run build`
-3. Open the Violentmonkey dashboard → **+** → **Install from file**, and pick
-   `userscript/dist/reddit-scroller.user.js`.
-4. Open `https://www.reddit.com`. The HUD appears bottom-right with a green dot
-   next to "daemon".
+### Building from source
 
-The built file is already committed, so installing it does not require the build
-step — but rerun `npm run build` and reinstall the file if you change the source.
+The file installed above is committed, so you only need this if you change the
+userscript:
+
+```bash
+cd userscript && npm install && npm run build
+```
+
+Then reinstall `userscript/dist/reddit-scroller.user.js` through the
+Violentmonkey dashboard → **+** → **Install from file**.
 
 ### Without the daemon
 
-The userscript works on its own, and if you never intend to alt-tab away you can
-stop after step 2 and skip Python entirely. Every key in the table below does the
-same thing, handled in the page.
-
-What the daemon adds is the one thing a page cannot do: receive those keys while
-*another window* has focus. Without it the numpad goes to whatever you alt-tabbed
-into, and the feed stops responding — which is the entire reason this project has
-a second half.
+Stopping after step 1 is a supported way to use this, not a half-installed
+state. Every key in the table below does the same thing, handled in the page.
+What you give up is the alt-tab case above: the numpad goes to whatever took
+focus, and the feed stops responding.
 
 The HUD names which of the two is driving. **`● daemon`** in green means the
 daemon is; **`● browser only`** in amber means the page is, and that the hotkey
-panel is showing built-in defaults rather than your `config.json`. Amber, not red:
-nothing is broken in that state.
+panel is showing built-in defaults rather than your `config.json`. Amber, not
+red: nothing is broken in that state.
 
 ## Browser support
 
@@ -164,9 +180,10 @@ exclusive full-screen.
 `shreddit-post` selector in `userscript/src/selection.js` needs updating. Scrolling
 still works meanwhile.
 
-**Nothing happens on any key.** Check the daemon's console — it logs every hotkey it
-sees. If nothing appears there, the problem is the keyboard hook; if lines appear but
-the page does not react, the problem is the transport.
+**Nothing happens on any key.** Check the daemon's console — it prints a line for
+each bound key it recognises, and nothing at all for any other key. If no line
+appears when you press numpad `0`, the problem is the keyboard hook; if lines
+appear but the page does not react, the problem is the transport.
 
 ## Development
 

@@ -3,7 +3,7 @@
 [![tests](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
 [![coverage](https://img.shields.io/badge/coverage-%E2%89%A595%25-brightgreen)](https://github.com/YokoAC/reddit-scroller/actions/workflows/tests.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
-[![platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white)](#setup)
+[![daemon: Windows](https://img.shields.io/badge/daemon-Windows-0078D4?logo=windows&logoColor=white)](#setup)
 [![browser: Firefox](https://img.shields.io/badge/Firefox-supported-FF7139?logo=firefoxbrowser&logoColor=white)](#browser-support)
 [![browser: Chrome](https://img.shields.io/badge/Chrome-supported-4285F4?logo=googlechrome&logoColor=white)](#browser-support)
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
@@ -17,9 +17,10 @@ Two halves:
 
 - A **userscript** that runs inside your real, already-logged-in Firefox or Chrome.
   It owns the scrolling, decides which post is "current", and draws the on-screen
-  readout.
+  readout. Any operating system.
 - A **Python daemon** that owns the global keyboard hook and hands commands to the
-  userscript over `127.0.0.1`.
+  userscript over `127.0.0.1`. Windows only — it matches keys by Windows scan
+  code — and optional, so the rest works without it.
 
 ## Setup
 
@@ -37,7 +38,7 @@ Two halves:
 That is the whole install, and it is already usable: the numpad scrolls the
 feed whenever the browser has focus. No Python, no Node.
 
-**2. The daemon** — optional, and only for the case a page cannot cover
+**2. The daemon** — Windows only, optional, for the case a page cannot cover
 
 A web page only receives keys while it has focus. The daemon hooks the
 keyboard globally, so the numpad still works with a full-screen game in front.
@@ -76,6 +77,15 @@ Stopping after step 1 is a supported way to use this, not a half-installed
 state. Every key in the table below does the same thing, handled in the page.
 What you give up is the alt-tab case above: the numpad goes to whatever took
 focus, and the feed stops responding.
+
+On macOS and Linux this is the whole product, and it works today — the
+userscript half has nothing platform-specific in it. Only the daemon is tied to
+Windows, because it matches keys by Windows scan code. Porting it would mean a
+second scan-code table, root access to read `/dev/input`, and an argument with
+Wayland, which restricts global key grabbing by design. If it ever happens it
+will not be by porting the hook: the daemon already separates producing a
+command from delivering one, so binding a key in your desktop environment to a
+small command-line client would do the same job without hooking anything.
 
 The HUD names which of the two is driving. **`● daemon`** in green means the
 daemon is; **`● browser only`** in amber means the page is, and that the hotkey

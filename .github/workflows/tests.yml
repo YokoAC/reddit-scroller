@@ -215,22 +215,28 @@ jobs:
           # when the browsers would.
           key: playwright-${{ runner.os }}-${{ hashFiles('userscript/package-lock.json') }}
 
-      - name: Install the browsers and their system dependencies
+      - name: Install the browsers
         if: steps.browser-cache.outputs.cache-hit != 'true'
-        # Two to three minutes when the mirrors are healthy, download and all.
-        # Eight tolerates a slow day; past that the runner's apt is broken and
-        # waiting longer will not fix it.
+        # Binaries only -- deliberately not --with-deps.
+        #
+        # The apt half ran on every job, cache hit or not, and it is the only
+        # part of this pipeline that has ever been slow: once crawling for 25
+        # minutes, once timing out after 8 having fetched 3 of 40 packages
+        # from azure.archive.ubuntu.com. It also could not be cached, so the
+        # flakiest step was the one guaranteed to run every time.
+        #
+        # The runner image already carries what these two browsers need in
+        # order to start. What --with-deps was adding on top was largely fonts
+        # and video codecs -- fonts-ipafont-gothic, libavcodec, libvpx, libx264
+        # -- for CJK text and media playback. This suite scrolls a DOM.
+        #
+        # If a future image drops something that is genuinely needed, the
+        # symptom is unmistakable: the browser refuses to launch and Playwright
+        # names the missing library. The fix then is not to bring apt back but
+        # to run this job in mcr.microsoft.com/playwright, where the
+        # dependencies ship with the image.
         timeout-minutes: 8
-        run: npx playwright install --with-deps firefox chromium
-        working-directory: userscript
-
-      - name: Install the browser system dependencies
-        # The cache restores the binaries but not the apt packages they link
-        # against, so this still runs on a hit. It is the slow half and it
-        # cannot be cached; the timeout above is what bounds it.
-        if: steps.browser-cache.outputs.cache-hit == 'true'
-        timeout-minutes: 8
-        run: npx playwright install-deps firefox chromium
+        run: npx playwright install firefox chromium
         working-directory: userscript
 
       - name: Run the cross-browser tests

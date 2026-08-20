@@ -7,9 +7,6 @@
 [![browser: Firefox](https://img.shields.io/badge/Firefox-supported-FF7139?logo=firefoxbrowser&logoColor=white)](#browser-support)
 [![browser: Chrome](https://img.shields.io/badge/Chrome-supported-4285F4?logo=googlechrome&logoColor=white)](#browser-support)
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
-[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![checked with mypy](https://img.shields.io/badge/mypy-strict-2a6db2)](https://mypy-lang.org/)
-[![biome](https://img.shields.io/badge/checked_with-biome-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev/)
 
 Auto-scrolls a Reddit feed in your normal browser on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.

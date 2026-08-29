@@ -1,0 +1,7 @@
+# Revisions git blame should step over: mechanical reformatting that changes
+# no content. GitHub honours this file automatically; locally, enable it with
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: normalise every stored file to LF
+d7e86ac4ff542960b7b33a467321086d259d3a04

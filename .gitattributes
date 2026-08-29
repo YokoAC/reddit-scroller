@@ -1,0 +1,20 @@
+# Line endings are settled here rather than left to whoever checks the file
+# out. Without this, `core.autocrlf` on each machine decides, and any tool
+# that rewrites a whole file picks its own ending -- which is how README.md,
+# config.py, server.py, test_config.py, config.example.json and package.json
+# came to be stored CRLF while their siblings were LF. An ending-only change
+# then reads as a several-hundred-line diff.
+#
+# With this in place git normalises on commit, so a tool writing CRLF (npm
+# does exactly this to package.json) no longer shows up as a modification.
+
+# LF in the repository and in the working tree, on every platform. Explicit
+# `eol=lf` matters: `text=auto` alone normalises the stored copy but leaves
+# the checkout to `core.eol`, which is `native` -- CRLF on Windows.
+* text=auto eol=lf
+
+# The exception. cmd.exe parses LF-only batch files unreliably, particularly
+# around labels and `goto`, so CRLF is load-bearing here rather than
+# historical. Declared ahead of the first such file existing.
+*.cmd text eol=crlf
+*.bat text eol=crlf

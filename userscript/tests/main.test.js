@@ -90,6 +90,7 @@ class Page {
     settings = SETTINGS,
     session = null,
     hidden = false,
+    stored = {},
   } = {}) {
     const page = new Page();
     // runScripts: "outside-only" gives the window a real eval running in its
@@ -108,6 +109,8 @@ class Page {
     page.posted = [];
     page._pending = [];
     page._seq = 0;
+    page.stored = { ...stored };
+    page.urls = [];
 
     // jsdom has no layout engine, so rects must be supplied: 400px tall posts
     // stacked from the top of a 1000px viewport.
@@ -137,7 +140,14 @@ class Page {
       page.wentBack = true;
     };
 
+    window.GM_getValue = (key, fallback) =>
+      key in page.stored ? page.stored[key] : fallback;
+    window.GM_setValue = (key, value) => {
+      page.stored[key] = value;
+    };
+
     window.GM_xmlhttpRequest = (opts) => {
+      page.urls.push(opts.url);
       const respond = (status, text) =>
         setTimeout(() => opts.onload({ status, responseText: text }), 1);
       if (!daemonUp) return setTimeout(() => opts.onerror({}), 1);
@@ -249,6 +259,44 @@ let page;
 afterEach(() => {
   page?.close();
   page = null;
+});
+
+describe("the port", () => {
+  it("defaults to 8765 and seeds the value so it can be found", async () => {
+    page = await Page.open();
+    expect(page.urls.every((u) => u.startsWith("http://127.0.0.1:8765/"))).toBe(
+      true,
+    );
+    // Seeded rather than left absent: a reader looking for somewhere to change
+    // the port has to be able to see the key in their manager.
+    expect(page.stored["rs-port"]).toBe(8765);
+  });
+
+  it("uses a port stored by the manager, with no rebuild", async () => {
+    // The whole point: moving the daemon off 8765 used to mean editing
+    // main.js, running npm and reinstalling the script.
+    page = await Page.open({ stored: { "rs-port": 9123 } });
+    expect(page.urls.length).toBeGreaterThan(0);
+    expect(page.urls.every((u) => u.startsWith("http://127.0.0.1:9123/"))).toBe(
+      true,
+    );
+  });
+
+  it("accepts the string a value editor hands back", async () => {
+    page = await Page.open({ stored: { "rs-port": "9123" } });
+    expect(page.urls.every((u) => u.startsWith("http://127.0.0.1:9123/"))).toBe(
+      true,
+    );
+  });
+
+  it("falls back to the default when the stored value is unusable", async () => {
+    // A typo must not leave the script unable to reach a daemon running
+    // perfectly well on 8765.
+    page = await Page.open({ stored: { "rs-port": "not a port" } });
+    expect(page.urls.every((u) => u.startsWith("http://127.0.0.1:8765/"))).toBe(
+      true,
+    );
+  });
 });
 
 describe("booting on a feed", () => {

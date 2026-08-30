@@ -5,6 +5,8 @@
 // @description  Hands-free Reddit scrolling driven by global hotkeys
 // @match        https://www.reddit.com/*
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      127.0.0.1
 // @connect      localhost
 // @run-at       document-idle
@@ -519,6 +521,12 @@
 
   // src/transport.js
   var MAX_BACKOFF_MS = 5e3;
+  var DEFAULT_PORT = 8765;
+  function normalisePort(raw) {
+    const port = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) return DEFAULT_PORT;
+    return port;
+  }
   function nextBackoff(current) {
     if (!current) return 1e3;
     return Math.min(current * 2, MAX_BACKOFF_MS);
@@ -610,7 +618,7 @@
   };
 
   // src/main.js
-  var PORT = 8765;
+  var PORT_KEY = "rs-port";
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
   var HELP_AUTOSHOW_MS = 6e3;
@@ -634,6 +642,18 @@
     try {
       sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
     } catch {
+    }
+  }
+  function loadPort() {
+    try {
+      const stored = GM_getValue(PORT_KEY);
+      if (stored === void 0 || stored === null || stored === "") {
+        GM_setValue(PORT_KEY, DEFAULT_PORT);
+        return DEFAULT_PORT;
+      }
+      return normalisePort(stored);
+    } catch {
+      return DEFAULT_PORT;
     }
   }
   function boot() {
@@ -783,7 +803,7 @@
       });
     }
     const transport = new Transport({
-      port: PORT,
+      port: loadPort(),
       request: gmRequest,
       sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
       onCommands: (commands) => {

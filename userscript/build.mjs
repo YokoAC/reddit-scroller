@@ -9,6 +9,8 @@ const BANNER = `// ==UserScript==
 // @description  Hands-free Reddit scrolling driven by global hotkeys
 // @match        https://www.reddit.com/*
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      127.0.0.1
 // @connect      localhost
 // @run-at       document-idle

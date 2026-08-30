@@ -204,13 +204,8 @@ export function nextPort(testInfo) {
  * navigation, and a GM_xmlhttpRequest that runs outside the page.
  */
 export async function preparePage(page, port) {
-  // The shipped bundle targets 127.0.0.1:8765. Rewriting the port here rather
-  // than in the bundle keeps the code under test byte-identical to what a
-  // reader installs -- and the privileged context is where such a request
-  // would be re-pointed anyway.
   await page.exposeFunction("__rsRequest", async ({ method, url, body }) => {
-    const target = url.replace("127.0.0.1:8765", `127.0.0.1:${port}`);
-    const response = await fetch(target, {
+    const response = await fetch(url, {
       method,
       body,
       headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -218,7 +213,15 @@ export async function preparePage(page, port) {
     return { status: response.status, text: await response.text() };
   });
 
-  await page.addInitScript(() => {
+  // GM storage, seeded with this test's port. The script reads the port from
+  // here, so each test reaches its own daemon the same way a reader moving off
+  // 8765 would -- by setting a value in their manager, with nothing rebuilt.
+  await page.addInitScript((seedPort) => {
+    const store = new Map([["rs-port", seedPort]]);
+    window.GM_getValue = (key, fallback) =>
+      store.has(key) ? store.get(key) : fallback;
+    window.GM_setValue = (key, value) => store.set(key, value);
+
     window.GM_xmlhttpRequest = (options) => {
       window
         .__rsRequest({
@@ -234,7 +237,7 @@ export async function preparePage(page, port) {
         })
         .catch(() => options.onerror?.());
     };
-  });
+  }, port);
 
   const code = await bundle();
   // Re-injected on every navigation, as a manager would, and deferred to

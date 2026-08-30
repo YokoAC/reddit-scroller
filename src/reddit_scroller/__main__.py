@@ -97,7 +97,10 @@ def main() -> int:
     except PortUnavailableError as exc:
         print(
             f"could not bind 127.0.0.1:{exc.port} ({exc.original}). "
-            "Another daemon may already be running, or change 'port' in config.json.",
+            "Another daemon may already be running. To move this one, set "
+            "'port' in config.json and set the userscript's 'rs-port' value to "
+            "match, in your userscript manager -- both sides, or the page keeps "
+            "polling the old port.",
             file=sys.stderr,
         )
         return 1

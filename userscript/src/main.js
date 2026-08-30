@@ -4,9 +4,14 @@ import { commandForKeyCode, detectMode, resolveAction } from "./commands.js";
 import { Hud } from "./hud.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
-import { gmRequest, Transport } from "./transport.js";
+import {
+  DEFAULT_PORT,
+  gmRequest,
+  normalisePort,
+  Transport,
+} from "./transport.js";
 
-const PORT = 8765;
+const PORT_KEY = "rs-port";
 const STATE_KEY = "rs-scroll-state";
 const FLASH_MS = 900;
 const HELP_AUTOSHOW_MS = 6000;
@@ -38,6 +43,28 @@ function persist(state) {
     sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
     // Persistence is a nicety; losing it is not worth breaking over.
+  }
+}
+
+// The port used to be a constant compiled into the bundle, which meant moving
+// it took an npm install, a rebuild and a reinstall -- the whole toolchain the
+// setup deliberately avoids. Worse, the daemon's own "port in use" message
+// tells you to edit config.json, and doing so silently left the page polling
+// the old port. Reading it from GM storage puts it where the manager already
+// shows it, editable in the same UI the script was installed from.
+function loadPort() {
+  try {
+    const stored = GM_getValue(PORT_KEY);
+    if (stored === undefined || stored === null || stored === "") {
+      // Seed it so the key is visible in the manager rather than something a
+      // reader has to know to create. This is the only write.
+      GM_setValue(PORT_KEY, DEFAULT_PORT);
+      return DEFAULT_PORT;
+    }
+    return normalisePort(stored);
+  } catch {
+    // A manager that withholds GM storage still gets a working script.
+    return DEFAULT_PORT;
   }
 }
 
@@ -206,7 +233,7 @@ function boot() {
   }
 
   const transport = new Transport({
-    port: PORT,
+    port: loadPort(),
     request: gmRequest,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     onCommands: (commands) => {

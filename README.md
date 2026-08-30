@@ -166,7 +166,7 @@ you leave out keeps its default.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `port` | `8765` | Loopback port. |
+| `port` | `8765` | Loopback port. Set the userscript's `rs-port` value to match. |
 | `default_speed` | `90` | Starting scroll speed, px/s. |
 | `speed_step` | `15` | Change per `faster` / `slower` press. |
 | `speed_min` / `speed_max` | `15` / `600` | Speed limits. |
@@ -191,10 +191,11 @@ expects, or the browser is blocking the userscript manager's request to
 `127.0.0.1` — see [Browser support](#browser-support), and check the manager's own
 console for a refused or pending local-network request. Otherwise
 check `uv run python -m reddit_scroller` is up and that
-`PORT` at the top of `userscript/src/main.js` matches `port` in your `config.json` —
-these are two independent values and changing one without the other breaks the
-connection. If you change `PORT`, rebuild the userscript (`npm run build`) and
-reinstall it before the change takes effect.
+the two sides agree on the port. It lives in two places: `port` in your
+`config.json`, and a value named `rs-port` that the userscript stores in your
+manager — Violentmonkey and Tampermonkey both expose it under the script's
+**Values** (or **Storage**) tab. Changing one without the other leaves the page
+polling a port nothing is listening on. Neither edit needs a rebuild.
 
 **Hotkeys work on the desktop but not in the game.** Windows will not deliver hooked
 keys from an elevated window to a non-elevated process. Run the daemon from an

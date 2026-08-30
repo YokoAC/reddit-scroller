@@ -44,10 +44,25 @@ A web page only receives keys while it has focus. The daemon hooks the
 keyboard globally, so the numpad still works with a full-screen game in front.
 That is the only thing it adds.
 
-```bash
-uv sync
-uv run python -m reddit_scroller
-```
+Unlike step 1, this half is a Python project, so it needs the code and something
+to run it with:
+
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), which
+   fetches Python and the dependencies for you:
+
+   ```bash
+   winget install --id astral-sh.uv
+   ```
+
+2. Get the code — `git clone https://github.com/YokoAC/reddit-scroller`, or
+   **Code → Download ZIP** on this page and unpack it.
+
+3. From that folder:
+
+   ```bash
+   uv sync
+   uv run python -m reddit_scroller
+   ```
 
 Leave it running; it prints its bindings on start. The HUD's dot turns green
 within a few seconds — no reload needed.

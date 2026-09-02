@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { gmRequest, nextBackoff, Transport } from "../src/transport.js";
+import {
+  DEFAULT_PORT,
+  gmRequest,
+  nextBackoff,
+  normalisePort,
+  Transport,
+} from "../src/transport.js";
 
 function harness({ responses }) {
   const calls = [];
@@ -30,6 +36,43 @@ function harness({ responses }) {
 }
 
 const ok = (body) => ({ status: 200, text: JSON.stringify(body) });
+
+describe("normalisePort", () => {
+  it("keeps a valid port", () => {
+    expect(normalisePort(9000)).toBe(9000);
+  });
+
+  it("accepts the string a manager's value editor hands back", () => {
+    // GM storage round-trips whatever the user typed, and every manager's UI
+    // is a text box.
+    expect(normalisePort("9000")).toBe(9000);
+    expect(normalisePort(" 9000 ")).toBe(9000);
+  });
+
+  it("falls back rather than leaving the script unable to connect", () => {
+    for (const bad of [
+      undefined,
+      null,
+      "",
+      "  ",
+      "not a port",
+      0,
+      -1,
+      65536,
+      1.5,
+      "80a",
+      Number.NaN,
+      {},
+    ]) {
+      expect(normalisePort(bad)).toBe(DEFAULT_PORT);
+    }
+  });
+
+  it("agrees with the daemon's own default", () => {
+    // config.py's Config.default() binds this; the two must not drift.
+    expect(DEFAULT_PORT).toBe(8765);
+  });
+});
 
 describe("nextBackoff", () => {
   it("starts at one second", () => {

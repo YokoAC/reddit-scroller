@@ -140,10 +140,15 @@ contract drifted twice with every test still green.
 - **Windows only** for the daemon, which is built around Windows scan codes.
 - **New Reddit only.** Posts are `<shreddit-post>` elements; if that changes,
   `selection.js` needs updating and the HUD says "no posts detected" meanwhile.
-- **The port is defined twice** — `PORT` in `userscript/src/main.js` and `port`
-  in `config.json` — and they must agree. Every fix considered was worse than
-  the problem: the userscript cannot ask the daemon which port it is on without
-  already knowing, and injecting it at build time would make the committed
-  bundle depend on local config.
+- **The port is defined twice** — `port` in `config.json` and an `rs-port`
+  value in GM storage — and they must agree. The duplication is unavoidable:
+  the userscript cannot ask the daemon which port it is on without already
+  knowing, and injecting it at build time would make the committed bundle
+  depend on local config. What changed is the cost of disagreeing. The port
+  used to be a constant compiled into the bundle, so moving it meant an npm
+  install, a rebuild and a reinstall — and the daemon's own "port in use"
+  message sent people to edit `config.json`, which silently left the page
+  polling the old port with the repair gated behind a toolchain the setup
+  otherwise avoids. Both sides are now editable in place.
 - **An elevated game needs an elevated daemon**, or Windows will not deliver
   hooked keys to it.

@@ -157,7 +157,11 @@ def test_main_reports_a_busy_port_helpfully(monkeypatch, capsys):
     assert daemon.main() == 1
     err = capsys.readouterr().err
     assert "could not bind 127.0.0.1:8765" in err
+    # Naming config.json alone is what made this message a trap: following it
+    # moved the daemon and left the page polling the old port. Both sides or
+    # neither.
     assert "config.json" in err
+    assert "rs-port" in err
 
 
 def test_main_exits_quietly_on_ctrl_c(monkeypatch):

@@ -9,6 +9,24 @@
 
 const MAX_BACKOFF_MS = 5000;
 
+/** What the daemon binds unless config.json says otherwise. */
+export const DEFAULT_PORT = 8765;
+
+/**
+ * Coerce a stored port into something usable.
+ *
+ * The value comes from GM storage, which a user edits by hand in their
+ * manager's UI -- so it arrives as whatever they typed, including nothing at
+ * all. A bad value must not leave the script unable to reach a daemon that is
+ * running perfectly well on the default, so anything unusable falls back
+ * rather than throwing.
+ */
+export function normalisePort(raw) {
+  const port = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return DEFAULT_PORT;
+  return port;
+}
+
 export function nextBackoff(current) {
   if (!current) return 1000;
   return Math.min(current * 2, MAX_BACKOFF_MS);

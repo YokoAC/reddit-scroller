@@ -120,19 +120,29 @@ re-running the script at all.
 
 ## Testing
 
-Three suites, all gating CI:
+Four suites, all gating CI. No test counts or coverage figures are quoted
+here on purpose: they move with every change, and a number in prose is a
+number that goes quietly stale — this section said "three suites" and "169
+tests" for a fortnight after neither was true. Coverage is enforced by
+thresholds in `pyproject.toml` and `vitest.config.js`, which fail the build.
+That is the fact worth stating; the percentage is in the CI run.
 
-- **Daemon** (78 tests, 100%) — pure logic plus the HTTP surface.
-- **Userscript** (169 tests, ~97%) — the modules, plus `main.js` exercised by
-  bundling it with esbuild into a fresh jsdom window per test. It exports
-  nothing and runs on import, so that is the only way to reach it; a window
-  per test is what stops listeners and timers leaking between cases.
-- **Integration** (9 tests) — the real `Transport` against the real aiohttp
-  server over real HTTP, substituting only the keyboard hook.
+- **Daemon** — pure logic plus the HTTP surface.
+- **Userscript** — the modules, plus `main.js` exercised by bundling it with
+  esbuild into a fresh jsdom window per test. It exports nothing and runs on
+  import, so that is the only way to reach it; a window per test is what stops
+  listeners and timers leaking between cases.
+- **Integration** — the real `Transport` against the real aiohttp server over
+  real HTTP, substituting only the keyboard hook.
+- **Browsers** — the built bundle in real Firefox and real Chromium, against a
+  real daemon, so a behaviour that holds in one engine and not the other fails
+  here rather than in someone's feed. It stands in for the hook the same way,
+  and for `GM_xmlhttpRequest` as well, since Playwright has no userscript
+  manager to run that in.
 
-That last suite exists because every user-visible bug in this project lived in
-the seam between the two halves, not inside either one. Both were well covered
-against hand-written stubs of each other, which is precisely how the wire
+The last two exist because every user-visible bug in this project has lived in
+a seam rather than inside a module. The two halves were each well covered
+against a hand-written stub of the other, which is precisely how the wire
 contract drifted twice with every test still green.
 
 ## Known limitations

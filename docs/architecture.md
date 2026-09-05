@@ -88,7 +88,9 @@ being nil if `/state` ever gains a consumer.
 ### Keys matched by scan code, and never suppressed
 
 Hotkeys are matched on `(scan_code, is_keypad)` rather than by name, which is
-what keeps numpad 8 distinct from the up arrow regardless of Num Lock.
+what keeps numpad 8 distinct from the up arrow regardless of Num Lock. The
+pairing earns its keep again on numpad `/`: the main-row `/` on a US layout
+carries the same scan code 53, and only `is_keypad` separates them.
 
 Nothing is suppressed. Swallowing a key would take it from the focused game,
 which defeats the entire purpose. `suppress=False` on the hook is load-bearing.
@@ -117,6 +119,37 @@ configured `default_speed` only ever applied on the very first run.
 Navigation always lands paused. Stopping the engine matters as much as
 persisting, because the back-forward cache can restore a page without
 re-running the script at all.
+
+### An off switch, and why it persists
+
+Nothing scrolls unless you ask it to — the engine boots stopped and navigation
+always lands paused. But two things kept acting on their own: the selection
+outline re-computed on every scroll event, including your own wheel scrolling,
+and the HUD was always drawn. "Leave me alone for a bit" was not expressible.
+
+There is a sharper reason than tidiness. The hook is global and suppresses
+nothing, which is the entire point — but it also means a game that binds numpad
+keys is driving the scroller whether or not you meant it to, and short of
+killing the daemon there was no way to say no. `standby` is that no.
+
+Dormant filters commands; it does not stop the poll. The wake key arrives over
+the same `/events` request as everything else, so the transport keeps running
+and the daemon keeps seeing the tab. Two commands are exempt: `standby` itself,
+and `help` — which mutates nothing on the page, and whose panel is where the
+wake key is written down.
+
+The HUD collapses to its top row rather than vanishing. That row already
+carries two independent facts — what the script is doing, and whether the
+daemon is up — and both still matter when the answer to the first is "nothing".
+A dormant script drawing zero pixels is indistinguishable from a broken one,
+three weeks later, on a machine you have stopped thinking about.
+
+That visible marker is also what makes the flag safe to persist, which the
+section above might seem to forbid. It does not. The rule is that nothing which
+makes the page *act* may be remembered; a switch that only ever makes it act
+less is the opposite case. Storing "was running" made a page scroll by itself,
+whereas storing "off" cannot start anything. It sits in GM storage beside
+`rs-port`, surviving a restart and editable in the same manager UI.
 
 ## Testing
 

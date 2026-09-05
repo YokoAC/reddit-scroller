@@ -14,6 +14,7 @@
     "prev": "numpad8",
     "next": "numpad2",
     "reverse": "numpad5",
-    "help": "numpad_star"
+    "help": "numpad_star",
+    "standby": "numpad_slash"
   }
 }

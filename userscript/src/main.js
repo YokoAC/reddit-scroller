@@ -12,6 +12,7 @@ import {
 } from "./transport.js";
 
 const PORT_KEY = "rs-port";
+const STANDBY_KEY = "rs-standby";
 const STATE_KEY = "rs-scroll-state";
 const FLASH_MS = 900;
 const HELP_AUTOSHOW_MS = 6000;
@@ -68,6 +69,31 @@ function loadPort() {
   }
 }
 
+// Standby is a preference, not scroll state, so unlike "was running" it is
+// safe to remember: it can only ever make the script do less. Seeded on first
+// run for the same reason the port is -- so the key is visible in the manager
+// rather than something a reader has to know to create.
+function loadStandby() {
+  try {
+    const stored = GM_getValue(STANDBY_KEY);
+    if (stored === undefined || stored === null || stored === "") {
+      GM_setValue(STANDBY_KEY, false);
+      return false;
+    }
+    return stored === true || stored === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveStandby(value) {
+  try {
+    GM_setValue(STANDBY_KEY, value);
+  } catch {
+    // Same bargain as the speed: a manager that withholds storage still works.
+  }
+}
+
 function boot() {
   const settings = { ...DEFAULTS };
   const persisted = loadPersisted();
@@ -95,6 +121,7 @@ function boot() {
   hud.mount();
 
   let mode = detectMode(window.location.pathname);
+  let standby = loadStandby();
   let daemonConnected = false;
   let helpVisible = false;
   let helpTimer = null;
@@ -116,6 +143,7 @@ function boot() {
       lastCommand,
       bindings: settings.bindings,
       helpVisible,
+      standby,
     };
   }
 
@@ -202,6 +230,16 @@ function boot() {
     toggleHelp() {
       showHelp(!helpVisible);
     },
+    toggleStandby() {
+      standby = !standby;
+      saveStandby(standby);
+      if (!standby) return;
+      // Leave the page as we found it: stop, save, and take the class off
+      // rather than merely styling it away. refresh() puts it back on wake.
+      engine.stop();
+      saveSpeed();
+      selection.clearHighlight();
+    },
     pageDown() {
       window.scrollBy(0, window.innerHeight * 0.8);
     },
@@ -211,7 +249,11 @@ function boot() {
     noop() {},
   };
 
+  // The one gate both input paths pass through: the daemon's transport and
+  // the in-page keydown fallback both arrive here. Dormant ignores everything
+  // that touches the page; standby wakes it, and help only draws a panel.
   function handleCommand(command) {
+    if (standby && command !== "standby" && command !== "help") return;
     flash(command);
     (ACTIONS[resolveAction(command, mode)] || ACTIONS.noop)();
     refresh();
@@ -224,7 +266,7 @@ function boot() {
     window.requestAnimationFrame(() => {
       refreshQueued = false;
       mode = detectMode(window.location.pathname);
-      if (mode === "feed") {
+      if (!standby && mode === "feed") {
         selection.refresh();
         selection.applyHighlight();
       }
@@ -249,7 +291,8 @@ function boot() {
         engine.setLimits(settings.speed_min, settings.speed_max);
         engine.seedDefaultSpeed(settings.default_speed);
         selection.setFocusLine(settings.focus_line);
-        if (!helpShownOnce) {
+        // A script that was switched off should not greet anyone.
+        if (!helpShownOnce && !standby) {
           helpShownOnce = true;
           helpVisible = true;
           helpTimer = setTimeout(() => {

@@ -36,6 +36,11 @@ const CSS = `
 #${HUD_ID} .rs-online { color: #56d364; font-size: 14px; }
 /* Amber, not red: the script is working, it is simply doing it alone. */
 #${HUD_ID} .rs-offline { color: #e3b341; font-size: 14px; }
+#${HUD_ID} .rs-dormant { color: #8b949e; }
+/* Collapsed keeps the first row -- status and daemon -- and drops the
+   rest. A dormant script that draws nothing looks like a broken one. */
+#${HUD_ID}.rs-collapsed { width: auto; opacity: 0.8; }
+#${HUD_ID}.rs-collapsed > *:not(:first-child) { display: none; }
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -94,6 +99,7 @@ const KEY_LABELS = {
   numpad_plus: "Num +",
   numpad_minus: "Num −",
   numpad_star: "Num *",
+  numpad_slash: "Num /",
   numpad_enter: "Num Enter",
 };
 
@@ -108,6 +114,7 @@ const HELP_ORDER = [
   ["open", "open selected post"],
   ["back", "back to the feed"],
   ["help", "show or hide this panel"],
+  ["standby", "switch the script off / on"],
 ];
 
 /** Turn the daemon's command->key-name map into rows for the help panel. */
@@ -144,9 +151,18 @@ export function formatHud(state) {
     }
   }
 
+  // Standby outranks running: the engine is stopped either way, but
+  // "PAUSED" promises the keys still work, and here they do not.
+  const status = state.standby
+    ? { text: "OFF", cls: "rs-dormant" }
+    : state.running
+      ? { text: "SCROLLING", cls: "rs-running" }
+      : { text: "PAUSED", cls: "rs-paused" };
+
   return {
-    status: state.running ? "SCROLLING" : "PAUSED",
-    statusClass: state.running ? "rs-running" : "rs-paused",
+    status: status.text,
+    statusClass: status.cls,
+    collapsed: Boolean(state.standby),
     speed: `${state.direction === -1 ? "▲" : "▼"} ${Math.round(state.speed)} px/s`,
     bar: "▓".repeat(clamped) + "░".repeat(BAR_CELLS - clamped),
     mode: state.mode.toUpperCase(),
@@ -226,6 +242,7 @@ export class Hud {
     if (!this._nodes) return;
     const view = formatHud(state);
     const n = this._nodes;
+    this._root.classList.toggle("rs-collapsed", view.collapsed);
     n.status.textContent = view.status;
     n.status.className = `rs-status ${view.statusClass}`;
     n.daemon.textContent = `● ${view.daemon}`;

@@ -94,6 +94,12 @@ describe("the new commands", () => {
     expect(commandForKeyCode("Numpad5")).toBe("reverse");
     expect(commandForKeyCode("NumpadMultiply")).toBe("help");
   });
+
+  it("puts standby on the numpad slash in either mode", () => {
+    expect(resolveAction("standby", "feed")).toBe("toggleStandby");
+    expect(resolveAction("standby", "thread")).toBe("toggleStandby");
+    expect(commandForKeyCode("NumpadDivide")).toBe("standby");
+  });
 });
 
 describe("resolveAction covers every command in both modes", () => {
@@ -109,6 +115,7 @@ describe("resolveAction covers every command in both modes", () => {
     prev: ["selectPrev", "pageUp"],
     reverse: ["flipDirection", "flipDirection"],
     help: ["toggleHelp", "toggleHelp"],
+    standby: ["toggleStandby", "toggleStandby"],
   };
 
   it.each(Object.entries(EXPECTED))("%s", (command, [feed, thread]) => {

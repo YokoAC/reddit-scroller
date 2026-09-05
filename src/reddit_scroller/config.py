@@ -18,6 +18,7 @@ COMMANDS = frozenset(
         "next",
         "reverse",
         "help",
+        "standby",
     }
 )
 
@@ -37,6 +38,7 @@ KEY_CODES: dict[str, tuple[int, bool]] = {
     "numpad_dot": (83, True),
     "numpad_plus": (78, True),
     "numpad_minus": (74, True),
+    "numpad_slash": (53, True),
     "numpad_star": (55, True),
     "numpad_enter": (28, True),
 }
@@ -51,6 +53,7 @@ DEFAULT_BINDINGS: dict[str, str] = {
     "next": "numpad2",
     "reverse": "numpad5",
     "help": "numpad_star",
+    "standby": "numpad_slash",
 }
 
 # KEY_CODES values are unique, so the mapping inverts cleanly. The help panel

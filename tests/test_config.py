@@ -27,10 +27,21 @@ def test_default_bindings_cover_every_command():
         "next",
         "reverse",
         "help",
+        "standby",
     }
     assert cfg.bindings["toggle"] == KeyBinding(scan_code=82, is_keypad=True)
     assert cfg.bindings["next"] == KeyBinding(scan_code=80, is_keypad=True)
     assert cfg.bindings["open"] == KeyBinding(scan_code=28, is_keypad=True)
+    assert cfg.bindings["standby"] == KeyBinding(scan_code=53, is_keypad=True)
+
+
+def test_numpad_slash_is_distinct_from_the_main_row_slash():
+    # Scan code 53 is shared: on a US layout the main-row "/" carries it too,
+    # and only is_keypad tells the two apart. This is the same trap numpad 8
+    # and the up arrow fall into, on a key the daemon now actually binds.
+    cfg = Config.default()
+    assert cfg.lookup(53, is_keypad=True) == "standby"
+    assert cfg.lookup(53, is_keypad=False) is None
 
 
 def test_lookup_resolves_keypad_keys_and_ignores_their_non_keypad_twins():

@@ -149,6 +149,19 @@ describe("Selection", () => {
     expect(marked[0].getAttribute("post-title")).toBe("Two");
   });
 
+  it("clears the highlight and leaves the post markup alone", () => {
+    // Standby has to leave the page as it found it, not merely style the
+    // outline away: an uninstalled script must not leave classes behind.
+    const sel = makeSelection();
+    sel.refresh();
+    sel.applyHighlight();
+    sel.clearHighlight();
+    expect(document.querySelectorAll(`.${HIGHLIGHT_CLASS}`)).toHaveLength(0);
+    expect(document.querySelectorAll("shreddit-post")).toHaveLength(3);
+    // Which post is current is untouched, so waking up restores it.
+    expect(sel.selected.title).toBe("Two");
+  });
+
   it("moves the highlight rather than adding a second one", () => {
     const sel = makeSelection();
     sel.refresh();

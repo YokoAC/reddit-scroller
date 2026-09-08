@@ -111,6 +111,13 @@ export class Selection {
     return this.selectedElement;
   }
 
+  /** Strip the outline without forgetting which post is current. */
+  clearHighlight() {
+    this._root.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((element) => {
+      element.classList.remove(HIGHLIGHT_CLASS);
+    });
+  }
+
   applyHighlight() {
     const wanted = this.selectedElement;
     this._root.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((element) => {

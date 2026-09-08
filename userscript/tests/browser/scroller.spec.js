@@ -73,11 +73,50 @@ test.describe("the userscript in a real browser", () => {
     // it are the bindings the daemon has just sent.
     const rows = page.locator("#rs-hud .rs-help-row");
     await expect(rows.first()).toBeVisible();
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(10);
     await expect(rows.locator(".rs-help-key").first()).toHaveText("Num 0");
 
     daemon.send("help");
     await expect(rows.first()).toBeHidden();
+  });
+
+  test("switches off, taking the outline and the panel rows with it", async ({
+    page,
+  }) => {
+    const hud = page.locator("#rs-hud");
+    // The outline is a rendered ring, not just a class name -- and whether it
+    // really disappears is a question only an engine can answer.
+    await expect(page.locator(".rs-selected")).toHaveCSS(
+      "outline-width",
+      "3px",
+    );
+
+    daemon.send("standby");
+
+    await expect(hud.locator(".rs-status")).toHaveText("OFF");
+    await expect(page.locator(".rs-selected")).toHaveCount(0);
+    // Collapsed takes the lower rows out of the layout, and leaves the one
+    // that says what is going on.
+    await expect(hud.locator(".rs-speed")).toBeHidden();
+    await expect(hud.locator(".rs-daemon")).toBeVisible();
+
+    daemon.send("standby");
+
+    await expect(hud.locator(".rs-status")).toHaveText("PAUSED");
+    await expect(hud.locator(".rs-speed")).toBeVisible();
+    await expect(page.locator(".rs-selected")).toHaveCount(1);
+  });
+
+  test("ignores the daemon's commands while switched off", async ({ page }) => {
+    daemon.send("standby");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("OFF");
+
+    daemon.send("toggle");
+    daemon.send("faster");
+    await page.waitForTimeout(1000);
+
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("OFF");
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
   test("scrolls the window at the configured speed", async ({ page }) => {
@@ -244,5 +283,28 @@ test.describe("without a daemon", () => {
 
     await page.locator("body").press("NumpadMultiply");
     await expect(page.locator("#rs-hud .rs-help-row").first()).toBeVisible();
+  });
+
+  // Pressed rather than sent over the wire, because the wire path never
+  // reaches the fallback handler. It is worth being honest about what this
+  // does not cover: the binding this replaced was numpad /, which Firefox
+  // spends on Quick Find, and pressing it here does not reproduce that --
+  // Playwright dispatches into content, never into browser chrome, even with
+  // accessibility.typeaheadfind.manual forced on. That was found by hand.
+  test("switches off and back on from the keyboard", async ({
+    page,
+  }, testInfo) => {
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    await expect(page.locator("#rs-hud .rs-daemon")).toHaveText(
+      "● browser only",
+    );
+
+    await page.locator("body").press("Numpad1");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("OFF");
+
+    // The press that matters: it has to reach the page a second time.
+    await page.locator("body").press("Numpad1");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("PAUSED");
   });
 });

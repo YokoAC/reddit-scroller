@@ -88,7 +88,10 @@ being nil if `/state` ever gains a consumer.
 ### Keys matched by scan code, and never suppressed
 
 Hotkeys are matched on `(scan_code, is_keypad)` rather than by name, which is
-what keeps numpad 8 distinct from the up arrow regardless of Num Lock.
+what keeps numpad 8 distinct from the up arrow regardless of Num Lock. Numpad
+`/` is the sharper case: the main-row `/` on a US layout carries the same scan
+code 53, and only `is_keypad` separates the two. Nothing binds it by default,
+for reasons below, but it stays bindable and the collision stays tested.
 
 Nothing is suppressed. Swallowing a key would take it from the focused game,
 which defeats the entire purpose. `suppress=False` on the hook is load-bearing.
@@ -118,6 +121,46 @@ Navigation always lands paused. Stopping the engine matters as much as
 persisting, because the back-forward cache can restore a page without
 re-running the script at all.
 
+### An off switch, and why it persists
+
+Nothing scrolls unless you ask it to — the engine boots stopped and navigation
+always lands paused. But two things kept acting on their own: the selection
+outline re-computed on every scroll event, including your own wheel scrolling,
+and the HUD was always drawn. "Leave me alone for a bit" was not expressible.
+
+There is a sharper reason than tidiness. The hook is global and suppresses
+nothing, which is the entire point — but it also means a game that binds numpad
+keys is driving the scroller whether or not you meant it to, and short of
+killing the daemon there was no way to say no. `standby` is that no.
+
+Dormant filters commands; it does not stop the poll. The wake key arrives over
+the same `/events` request as everything else, so the transport keeps running
+and the daemon keeps seeing the tab. Two commands are exempt: `standby` itself,
+and `help` — which mutates nothing on the page, and whose panel is where the
+wake key is written down.
+
+The HUD collapses to its top row rather than vanishing. That row already
+carries two independent facts — what the script is doing, and whether the
+daemon is up — and both still matter when the answer to the first is "nothing".
+A dormant script drawing zero pixels is indistinguishable from a broken one,
+three weeks later, on a machine you have stopped thinking about.
+
+That visible marker is also what makes the flag safe to persist, which the
+section above might seem to forbid. It does not. The rule is that nothing which
+makes the page *act* may be remembered; a switch that only ever makes it act
+less is the opposite case. Storing "was running" made a page scroll by itself,
+whereas storing "off" cannot start anything. It sits in GM storage beside
+`rs-port`, surviving a restart and editable in the same manager UI.
+
+Standby sits on numpad 1, and the first attempt did not. Numpad `/` was the
+mnemonic choice, and its scan code checked out — but a key being *deliverable*
+is not the same as a key being *free*. Firefox spends `/` on Quick Find, whose
+find bar is browser chrome: it takes focus, the page stops receiving `keydown`,
+and the fallback handler never sees the press that would switch the script back
+on. Chrome has no such shortcut, so the binding would have behaved differently
+in the two engines this project supports on equal terms — which is the part
+that settles it, ahead of any workaround. A plain digit is claimed by nobody.
+
 ## Testing
 
 Four suites, all gating CI. No test counts or coverage figures are quoted
@@ -139,6 +182,11 @@ That is the fact worth stating; the percentage is in the CI run.
   here rather than in someone's feed. It stands in for the hook the same way,
   and for `GM_xmlhttpRequest` as well, since Playwright has no userscript
   manager to run that in.
+
+What it cannot reach is the browser's own chrome. Playwright dispatches keys
+into content, so a shortcut the browser has claimed for itself is invisible
+here — Firefox's Quick Find on `/` cost this project a binding, and no suite
+saw it. Keys are worth trying by hand once, in both browsers, before they ship.
 
 The last two exist because every user-visible bug in this project has lived in
 a seam rather than inside a module. The two halves were each well covered

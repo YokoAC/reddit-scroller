@@ -94,6 +94,18 @@ describe("the new commands", () => {
     expect(commandForKeyCode("Numpad5")).toBe("reverse");
     expect(commandForKeyCode("NumpadMultiply")).toBe("help");
   });
+
+  it("puts standby on numpad 1 in either mode", () => {
+    expect(resolveAction("standby", "feed")).toBe("toggleStandby");
+    expect(resolveAction("standby", "thread")).toBe("toggleStandby");
+    expect(commandForKeyCode("Numpad1")).toBe("standby");
+  });
+
+  it("leaves the numpad slash alone, because Firefox has spent it", () => {
+    // "/" opens Quick Find, which takes focus away from the page and stops
+    // the fallback handler seeing the next press at all.
+    expect(commandForKeyCode("NumpadDivide")).toBeNull();
+  });
 });
 
 describe("resolveAction covers every command in both modes", () => {
@@ -109,6 +121,7 @@ describe("resolveAction covers every command in both modes", () => {
     prev: ["selectPrev", "pageUp"],
     reverse: ["flipDirection", "flipDirection"],
     help: ["toggleHelp", "toggleHelp"],
+    standby: ["toggleStandby", "toggleStandby"],
   };
 
   it.each(Object.entries(EXPECTED))("%s", (command, [feed, thread]) => {

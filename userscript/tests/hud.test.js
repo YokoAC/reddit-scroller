@@ -14,6 +14,7 @@ const CODE_TO_LABEL = {
   Numpad2: "Num 2",
   Numpad5: "Num 5",
   NumpadMultiply: "Num *",
+  Numpad1: "Num 1",
 };
 
 const BASE = {
@@ -33,6 +34,19 @@ describe("formatHud", () => {
     const out = formatHud(BASE);
     expect(out.status).toBe("SCROLLING");
     expect(out.statusClass).toBe("rs-running");
+  });
+
+  it("shows the standby state as neither running nor paused", () => {
+    // PAUSED already means "stopped but listening". A dormant script is a
+    // third thing, and from another monitor the two must not look alike.
+    const out = formatHud({ ...BASE, running: false, standby: true });
+    expect(out.status).toBe("OFF");
+    expect(out.statusClass).toBe("rs-dormant");
+    expect(out.collapsed).toBe(true);
+  });
+
+  it("leaves the panel expanded when it is not on standby", () => {
+    expect(formatHud(BASE).collapsed).toBe(false);
   });
 
   it("shows the paused state", () => {

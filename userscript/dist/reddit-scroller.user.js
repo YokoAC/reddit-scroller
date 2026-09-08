@@ -26,7 +26,8 @@
     next: { feed: "selectNext", thread: "pageDown" },
     prev: { feed: "selectPrev", thread: "pageUp" },
     reverse: { feed: "flipDirection", thread: "flipDirection" },
-    help: { feed: "toggleHelp", thread: "toggleHelp" }
+    help: { feed: "toggleHelp", thread: "toggleHelp" },
+    standby: { feed: "toggleStandby", thread: "toggleStandby" }
   };
   function resolveAction(command, mode) {
     const byMode = ACTIONS[command];
@@ -42,7 +43,8 @@
     Numpad8: "prev",
     Numpad2: "next",
     Numpad5: "reverse",
-    NumpadMultiply: "help"
+    NumpadMultiply: "help",
+    Numpad1: "standby"
   };
   var DEFAULT_BINDINGS = {
     toggle: "numpad0",
@@ -53,7 +55,8 @@
     prev: "numpad8",
     next: "numpad2",
     reverse: "numpad5",
-    help: "numpad_star"
+    help: "numpad_star",
+    standby: "numpad1"
   };
   function commandForKeyCode(code) {
     return KEY_CODES[code] || null;
@@ -147,6 +150,12 @@
       this._pinned = this._posts[this._index].permalink;
       return this.selectedElement;
     }
+    /** Strip the outline without forgetting which post is current. */
+    clearHighlight() {
+      this._root.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((element) => {
+        element.classList.remove(HIGHLIGHT_CLASS);
+      });
+    }
     applyHighlight() {
       const wanted = this.selectedElement;
       this._root.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((element) => {
@@ -188,6 +197,11 @@
 #${HUD_ID} .rs-online { color: #56d364; font-size: 14px; }
 /* Amber, not red: the script is working, it is simply doing it alone. */
 #${HUD_ID} .rs-offline { color: #e3b341; font-size: 14px; }
+#${HUD_ID} .rs-dormant { color: #8b949e; }
+/* Collapsed keeps the first row -- status and daemon -- and drops the
+   rest. A dormant script that draws nothing looks like a broken one. */
+#${HUD_ID}.rs-collapsed { width: auto; opacity: 0.8; }
+#${HUD_ID}.rs-collapsed > *:not(:first-child) { display: none; }
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -245,6 +259,7 @@
     numpad_plus: "Num +",
     numpad_minus: "Num \u2212",
     numpad_star: "Num *",
+    numpad_slash: "Num /",
     numpad_enter: "Num Enter"
   };
   var HELP_ORDER = [
@@ -256,7 +271,8 @@
     ["prev", "previous post / page up"],
     ["open", "open selected post"],
     ["back", "back to the feed"],
-    ["help", "show or hide this panel"]
+    ["help", "show or hide this panel"],
+    ["standby", "switch the script off / on"]
   ];
   function helpRows(bindings) {
     const source = bindings && Object.keys(bindings).length ? bindings : DEFAULT_BINDINGS;
@@ -284,9 +300,11 @@
         title = state.postCount === 0 ? "no posts detected" : "no post in focus";
       }
     }
+    const status = state.standby ? { text: "OFF", cls: "rs-dormant" } : state.running ? { text: "SCROLLING", cls: "rs-running" } : { text: "PAUSED", cls: "rs-paused" };
     return {
-      status: state.running ? "SCROLLING" : "PAUSED",
-      statusClass: state.running ? "rs-running" : "rs-paused",
+      status: status.text,
+      statusClass: status.cls,
+      collapsed: Boolean(state.standby),
       speed: `${state.direction === -1 ? "\u25B2" : "\u25BC"} ${Math.round(state.speed)} px/s`,
       bar: "\u2593".repeat(clamped) + "\u2591".repeat(BAR_CELLS - clamped),
       mode: state.mode.toUpperCase(),
@@ -359,6 +377,7 @@
       if (!this._nodes) return;
       const view = formatHud(state);
       const n = this._nodes;
+      this._root.classList.toggle("rs-collapsed", view.collapsed);
       n.status.textContent = view.status;
       n.status.className = `rs-status ${view.statusClass}`;
       n.daemon.textContent = `\u25CF ${view.daemon}`;
@@ -619,6 +638,7 @@
 
   // src/main.js
   var PORT_KEY = "rs-port";
+  var STANDBY_KEY = "rs-standby";
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
   var HELP_AUTOSHOW_MS = 6e3;
@@ -656,6 +676,24 @@
       return DEFAULT_PORT;
     }
   }
+  function loadStandby() {
+    try {
+      const stored = GM_getValue(STANDBY_KEY);
+      if (stored === void 0 || stored === null || stored === "") {
+        GM_setValue(STANDBY_KEY, false);
+        return false;
+      }
+      return stored === true || stored === "true";
+    } catch {
+      return false;
+    }
+  }
+  function saveStandby(value) {
+    try {
+      GM_setValue(STANDBY_KEY, value);
+    } catch {
+    }
+  }
   function boot() {
     const settings = { ...DEFAULTS };
     const persisted = loadPersisted();
@@ -679,6 +717,7 @@
     const hud = new Hud(document);
     hud.mount();
     let mode = detectMode(window.location.pathname);
+    let standby = loadStandby();
     let daemonConnected = false;
     let helpVisible = false;
     let helpTimer = null;
@@ -698,7 +737,8 @@
         daemonConnected,
         lastCommand,
         bindings: settings.bindings,
-        helpVisible
+        helpVisible,
+        standby
       };
     }
     function paint() {
@@ -774,6 +814,14 @@
       toggleHelp() {
         showHelp(!helpVisible);
       },
+      toggleStandby() {
+        standby = !standby;
+        saveStandby(standby);
+        if (!standby) return;
+        engine.stop();
+        saveSpeed();
+        selection.clearHighlight();
+      },
       pageDown() {
         window.scrollBy(0, window.innerHeight * 0.8);
       },
@@ -784,6 +832,7 @@
       }
     };
     function handleCommand(command) {
+      if (standby && command !== "standby" && command !== "help") return;
       flash(command);
       (ACTIONS2[resolveAction(command, mode)] || ACTIONS2.noop)();
       refresh();
@@ -795,7 +844,7 @@
       window.requestAnimationFrame(() => {
         refreshQueued = false;
         mode = detectMode(window.location.pathname);
-        if (mode === "feed") {
+        if (!standby && mode === "feed") {
           selection.refresh();
           selection.applyHighlight();
         }
@@ -817,7 +866,7 @@
           engine.setLimits(settings.speed_min, settings.speed_max);
           engine.seedDefaultSpeed(settings.default_speed);
           selection.setFocusLine(settings.focus_line);
-          if (!helpShownOnce) {
+          if (!helpShownOnce && !standby) {
             helpShownOnce = true;
             helpVisible = true;
             helpTimer = setTimeout(() => {

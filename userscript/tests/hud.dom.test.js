@@ -26,6 +26,23 @@ describe("Hud", () => {
     expect(document.querySelectorAll("style#rs-style")).toHaveLength(1);
   });
 
+  it("collapses to the top row on standby and expands again after", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    const root = document.getElementById(HUD_ID);
+
+    hud.render({ ...STATE, standby: true });
+    expect(root.classList.contains("rs-collapsed")).toBe(true);
+    // The row that survives still carries both facts it always did.
+    expect(root.querySelector(".rs-status").textContent).toBe("OFF");
+    expect(root.querySelector(".rs-daemon").textContent).toContain(
+      "browser only",
+    );
+
+    hud.render(STATE);
+    expect(root.classList.contains("rs-collapsed")).toBe(false);
+  });
+
   it("mounting twice does not produce two panels", () => {
     const hud = new Hud(document);
     hud.mount();

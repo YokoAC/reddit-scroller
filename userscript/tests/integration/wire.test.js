@@ -291,6 +291,7 @@ describe("the settings contract", () => {
         "prev",
         "reverse",
         "slower",
+        "standby",
         "toggle",
       ].sort(),
     );

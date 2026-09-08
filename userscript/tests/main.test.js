@@ -70,6 +70,7 @@ const SETTINGS = {
     next: "numpad2",
     reverse: "numpad5",
     help: "numpad_star",
+    standby: "numpad1",
   },
 };
 
@@ -483,6 +484,84 @@ describe("daemon settings are adopted", () => {
     page = await Page.open({ settings: { ...SETTINGS, speed_step: 50 } });
     await page.send("faster");
     expect(page.hud(".rs-speed")).toBe("▼ 140 px/s");
+  });
+});
+
+describe("standby", () => {
+  it("ignores commands until it is woken", async () => {
+    page = await Page.open();
+    await page.send("standby");
+    expect(page.hud(".rs-status")).toBe("OFF");
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("OFF");
+    await page.settle(120);
+    expect(page.scrolled).toEqual([]);
+  });
+
+  it("stops a scroll that is already running", async () => {
+    page = await Page.open();
+    await page.send("toggle");
+    await page.settle(120);
+    expect(page.scrolled.length).toBeGreaterThan(0);
+    await page.send("standby");
+    page.scrolled = [];
+    await page.settle(120);
+    expect(page.scrolled).toEqual([]);
+  });
+
+  it("takes the outline off the page", async () => {
+    page = await Page.open();
+    expect(page.selectedTitle).not.toBeNull();
+    await page.send("standby");
+    expect(page.selectedTitle).toBeNull();
+  });
+
+  it("comes back on a second press, outline and all", async () => {
+    page = await Page.open();
+    await page.send("standby");
+    expect(page.selectedTitle).toBeNull();
+    await page.send("standby");
+    expect(page.selectedTitle).not.toBeNull();
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("still opens the help panel, which is where the wake key is written", async () => {
+    page = await Page.open();
+    const help = page.window.document.querySelector("#rs-hud .rs-help");
+    await page.send("help"); // close the panel the daemon connection opened
+    expect(help.hidden).toBe(true);
+    await page.send("standby");
+    expect(page.hud(".rs-status")).toBe("OFF");
+    await page.send("help");
+    expect(help.hidden).toBe(false);
+    expect(help.textContent).toContain("Num 1");
+  });
+
+  it("remembers itself where the manager can show it", async () => {
+    page = await Page.open();
+    await page.send("standby");
+    expect(page.stored["rs-standby"]).toBe(true);
+    await page.send("standby");
+    expect(page.stored["rs-standby"]).toBe(false);
+  });
+
+  it("boots dormant when the stored value says so", async () => {
+    page = await Page.open({ stored: { "rs-standby": true } });
+    expect(page.hud(".rs-status")).toBe("OFF");
+    expect(page.selectedTitle).toBeNull();
+    await page.send("toggle");
+    await page.settle(120);
+    expect(page.scrolled).toEqual([]);
+  });
+
+  it("does not pop the help panel open when it boots dormant", async () => {
+    // The auto-show is a greeting. A script that was switched off should not
+    // greet anyone -- that is the exact behaviour standby promises to stop.
+    page = await Page.open({ stored: { "rs-standby": true } });
+    expect(page.window.document.querySelector("#rs-hud .rs-help").hidden).toBe(
+      true,
+    );
   });
 });
 

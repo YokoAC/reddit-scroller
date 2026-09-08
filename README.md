@@ -133,6 +133,7 @@ to "daemon" in the HUD means it went through.
 | Numpad `Enter` | open the selected post | — |
 | Numpad `.` | — | back to the feed |
 | Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
+| Numpad `1` | switch the script off / on | switch the script off / on |
 
 **Hold `+` or `-`** and the speed ramps continuously — the whole 15–600 px/s range
 takes about a second. The other keys deliberately fire once per press, so a finger
@@ -146,7 +147,17 @@ opening. Pressing `.` returns to the feed, also paused. Press `0` when you're re
 
 **A page never starts scrolling on its own.** Your speed is remembered within a tab,
 so opening a thread and coming back keeps it — but a new tab starts at
-`default_speed` and paused. Nothing is stored beyond the tab's lifetime.
+`default_speed` and paused. No scroll state outlives the tab.
+
+**Numpad `1` switches the script off.** The HUD collapses to a single `OFF` line, the
+blue outline comes off the page, and every other key is ignored — for when you would
+rather just scroll with the wheel, or when your game binds numpad keys of its own and
+you would rather they did not also reach Reddit. Press `1` again to bring it back.
+
+This is the one setting that *is* remembered across tabs and restarts, because it can
+only ever make the script do less. The `OFF` line stays visible so a switched-off
+script never looks like a broken one, and `*` still opens the panel while off — which
+is where the key that wakes it is listed.
 
 The selected post is outlined in blue and named in the HUD. While auto-scrolling it
 follows whatever sits a quarter of the way down the screen; pressing `8` or `2` pins
@@ -174,9 +185,11 @@ you leave out keeps its default.
 | `bindings` | see above | Command → key name. |
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
-`numpad_star`, `numpad_enter`.
+`numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to
+`numpad_slash` is a poor idea in Firefox, which spends `/` on Quick Find.
 
-Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`, `help`.
+Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`,
+`help`, `standby`.
 
 `config.json` is gitignored — it's local to your machine. `config.example.json` is
 the committed template.

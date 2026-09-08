@@ -11,7 +11,9 @@
 Auto-scrolls a Reddit feed in your normal browser on a second monitor, driven by
 global numpad hotkeys — so you can keep reading without leaving a full-screen game.
 
-<img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
+<div align="center">
+  <img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
+</div>
 
 Two halves:
 

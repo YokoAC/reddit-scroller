@@ -36,7 +36,7 @@ const KEY_CODES = {
   Numpad2: "next",
   Numpad5: "reverse",
   NumpadMultiply: "help",
-  NumpadDivide: "standby",
+  Numpad1: "standby",
 };
 
 /**
@@ -54,7 +54,7 @@ export const DEFAULT_BINDINGS = {
   next: "numpad2",
   reverse: "numpad5",
   help: "numpad_star",
-  standby: "numpad_slash",
+  standby: "numpad1",
 };
 
 export function commandForKeyCode(code) {

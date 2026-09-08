@@ -284,4 +284,27 @@ test.describe("without a daemon", () => {
     await page.locator("body").press("NumpadMultiply");
     await expect(page.locator("#rs-hud .rs-help-row").first()).toBeVisible();
   });
+
+  // Pressed rather than sent over the wire, because the wire path never
+  // reaches the fallback handler. It is worth being honest about what this
+  // does not cover: the binding this replaced was numpad /, which Firefox
+  // spends on Quick Find, and pressing it here does not reproduce that --
+  // Playwright dispatches into content, never into browser chrome, even with
+  // accessibility.typeaheadfind.manual forced on. That was found by hand.
+  test("switches off and back on from the keyboard", async ({
+    page,
+  }, testInfo) => {
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    await expect(page.locator("#rs-hud .rs-daemon")).toHaveText(
+      "● browser only",
+    );
+
+    await page.locator("body").press("Numpad1");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("OFF");
+
+    // The press that matters: it has to reach the page a second time.
+    await page.locator("body").press("Numpad1");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("PAUSED");
+  });
 });

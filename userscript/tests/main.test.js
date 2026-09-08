@@ -70,7 +70,7 @@ const SETTINGS = {
     next: "numpad2",
     reverse: "numpad5",
     help: "numpad_star",
-    standby: "numpad_slash",
+    standby: "numpad1",
   },
 };
 
@@ -535,7 +535,7 @@ describe("standby", () => {
     expect(page.hud(".rs-status")).toBe("OFF");
     await page.send("help");
     expect(help.hidden).toBe(false);
-    expect(help.textContent).toContain("Num /");
+    expect(help.textContent).toContain("Num 1");
   });
 
   it("remembers itself where the manager can show it", async () => {

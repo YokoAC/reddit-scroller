@@ -44,7 +44,7 @@
     Numpad2: "next",
     Numpad5: "reverse",
     NumpadMultiply: "help",
-    NumpadDivide: "standby"
+    Numpad1: "standby"
   };
   var DEFAULT_BINDINGS = {
     toggle: "numpad0",
@@ -56,7 +56,7 @@
     next: "numpad2",
     reverse: "numpad5",
     help: "numpad_star",
-    standby: "numpad_slash"
+    standby: "numpad1"
   };
   function commandForKeyCode(code) {
     return KEY_CODES[code] || null;

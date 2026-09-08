@@ -88,9 +88,10 @@ being nil if `/state` ever gains a consumer.
 ### Keys matched by scan code, and never suppressed
 
 Hotkeys are matched on `(scan_code, is_keypad)` rather than by name, which is
-what keeps numpad 8 distinct from the up arrow regardless of Num Lock. The
-pairing earns its keep again on numpad `/`: the main-row `/` on a US layout
-carries the same scan code 53, and only `is_keypad` separates them.
+what keeps numpad 8 distinct from the up arrow regardless of Num Lock. Numpad
+`/` is the sharper case: the main-row `/` on a US layout carries the same scan
+code 53, and only `is_keypad` separates the two. Nothing binds it by default,
+for reasons below, but it stays bindable and the collision stays tested.
 
 Nothing is suppressed. Swallowing a key would take it from the focused game,
 which defeats the entire purpose. `suppress=False` on the hook is load-bearing.
@@ -151,6 +152,15 @@ less is the opposite case. Storing "was running" made a page scroll by itself,
 whereas storing "off" cannot start anything. It sits in GM storage beside
 `rs-port`, surviving a restart and editable in the same manager UI.
 
+Standby sits on numpad 1, and the first attempt did not. Numpad `/` was the
+mnemonic choice, and its scan code checked out — but a key being *deliverable*
+is not the same as a key being *free*. Firefox spends `/` on Quick Find, whose
+find bar is browser chrome: it takes focus, the page stops receiving `keydown`,
+and the fallback handler never sees the press that would switch the script back
+on. Chrome has no such shortcut, so the binding would have behaved differently
+in the two engines this project supports on equal terms — which is the part
+that settles it, ahead of any workaround. A plain digit is claimed by nobody.
+
 ## Testing
 
 Four suites, all gating CI. No test counts or coverage figures are quoted
@@ -172,6 +182,11 @@ That is the fact worth stating; the percentage is in the CI run.
   here rather than in someone's feed. It stands in for the hook the same way,
   and for `GM_xmlhttpRequest` as well, since Playwright has no userscript
   manager to run that in.
+
+What it cannot reach is the browser's own chrome. Playwright dispatches keys
+into content, so a shortcut the browser has claimed for itself is invisible
+here — Firefox's Quick Find on `/` cost this project a binding, and no suite
+saw it. Keys are worth trying by hand once, in both browsers, before they ship.
 
 The last two exist because every user-visible bug in this project has lived in
 a seam rather than inside a module. The two halves were each well covered

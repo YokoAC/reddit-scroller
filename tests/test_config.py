@@ -32,14 +32,17 @@ def test_default_bindings_cover_every_command():
     assert cfg.bindings["toggle"] == KeyBinding(scan_code=82, is_keypad=True)
     assert cfg.bindings["next"] == KeyBinding(scan_code=80, is_keypad=True)
     assert cfg.bindings["open"] == KeyBinding(scan_code=28, is_keypad=True)
-    assert cfg.bindings["standby"] == KeyBinding(scan_code=53, is_keypad=True)
+    assert cfg.bindings["standby"] == KeyBinding(scan_code=79, is_keypad=True)
 
 
-def test_numpad_slash_is_distinct_from_the_main_row_slash():
+def test_numpad_slash_is_distinct_from_the_main_row_slash(tmp_path):
     # Scan code 53 is shared: on a US layout the main-row "/" carries it too,
-    # and only is_keypad tells the two apart. This is the same trap numpad 8
-    # and the up arrow fall into, on a key the daemon now actually binds.
-    cfg = Config.default()
+    # and only is_keypad tells the two apart. Nothing binds it by default --
+    # Firefox spends "/" on Quick Find -- but it stays bindable, so the
+    # collision stays worth asserting.
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": {"standby": "numpad_slash"}}))
+    cfg = load_config(path)
     assert cfg.lookup(53, is_keypad=True) == "standby"
     assert cfg.lookup(53, is_keypad=False) is None
 
@@ -68,9 +71,11 @@ def test_partial_file_overrides_only_named_fields(tmp_path):
 
 def test_partial_bindings_merge_over_defaults(tmp_path):
     path = tmp_path / "config.json"
-    path.write_text(json.dumps({"bindings": {"toggle": "numpad1"}}))
+    # numpad3 rather than numpad1: the latter is standby's default now, and
+    # binding it to two commands is a config error in its own right.
+    path.write_text(json.dumps({"bindings": {"toggle": "numpad3"}}))
     cfg = load_config(path)
-    assert cfg.bindings["toggle"] == KeyBinding(scan_code=79, is_keypad=True)
+    assert cfg.bindings["toggle"] == KeyBinding(scan_code=81, is_keypad=True)
     assert cfg.bindings["back"] == Config.default().bindings["back"]
 
 

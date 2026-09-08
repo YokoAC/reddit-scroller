@@ -53,7 +53,7 @@ DEFAULT_BINDINGS: dict[str, str] = {
     "next": "numpad2",
     "reverse": "numpad5",
     "help": "numpad_star",
-    "standby": "numpad_slash",
+    "standby": "numpad1",
 }
 
 # KEY_CODES values are unique, so the mapping inverts cleanly. The help panel

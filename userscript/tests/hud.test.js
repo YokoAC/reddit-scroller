@@ -14,7 +14,7 @@ const CODE_TO_LABEL = {
   Numpad2: "Num 2",
   Numpad5: "Num 5",
   NumpadMultiply: "Num *",
-  NumpadDivide: "Num /",
+  Numpad1: "Num 1",
 };
 
 const BASE = {

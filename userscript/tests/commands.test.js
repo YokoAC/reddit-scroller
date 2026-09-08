@@ -95,10 +95,16 @@ describe("the new commands", () => {
     expect(commandForKeyCode("NumpadMultiply")).toBe("help");
   });
 
-  it("puts standby on the numpad slash in either mode", () => {
+  it("puts standby on numpad 1 in either mode", () => {
     expect(resolveAction("standby", "feed")).toBe("toggleStandby");
     expect(resolveAction("standby", "thread")).toBe("toggleStandby");
-    expect(commandForKeyCode("NumpadDivide")).toBe("standby");
+    expect(commandForKeyCode("Numpad1")).toBe("standby");
+  });
+
+  it("leaves the numpad slash alone, because Firefox has spent it", () => {
+    // "/" opens Quick Find, which takes focus away from the page and stops
+    // the fallback handler seeing the next press at all.
+    expect(commandForKeyCode("NumpadDivide")).toBeNull();
   });
 });
 

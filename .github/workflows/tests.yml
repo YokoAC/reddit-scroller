@@ -137,6 +137,33 @@ jobs:
           fi
         working-directory: userscript
 
+      - name: A code change must raise the version
+        # Installs update from the bundle on main, and a userscript manager
+        # installs an update only when @version rises -- so a code change
+        # merged under the old version reaches nobody, and nothing says so.
+        # Comments and whitespace do not count: the script normalises both
+        # bundles with esbuild, so a comment fix does not push an identical
+        # update to everyone.
+        #
+        # Pull requests only, since it compares against the branch being
+        # merged into. It lives in this job rather than its own because this
+        # job is already a required check, so a failure blocks the merge with
+        # no branch-protection change. The base ref reaches the shell through
+        # env rather than ${{ }} interpolation, the usual guard against
+        # injection through a branch name.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --depth=1 origin "$BASE_REF"
+          if ! git cat-file -e FETCH_HEAD:userscript/dist/reddit-scroller.user.js 2>/dev/null; then
+            echo "The base branch has no bundle to compare against."
+            exit 0
+          fi
+          git show FETCH_HEAD:userscript/dist/reddit-scroller.user.js > "$RUNNER_TEMP/base.user.js"
+          node check-version-bump.mjs "$RUNNER_TEMP/base.user.js" dist/reddit-scroller.user.js
+        working-directory: userscript
+
   integration:
     # Drives the real Transport against a real aiohttp daemon over real HTTP.
     # Every user-visible bug so far lived in this seam rather than in either

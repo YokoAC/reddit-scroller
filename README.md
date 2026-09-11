@@ -92,8 +92,7 @@ Then reinstall `userscript/dist/reddit-scroller.user.js` through the
 Violentmonkey dashboard → **+** → **Install from file**.
 
 To ship a change, also raise `version` in `userscript/package.json`: managers
-update only when it rises. CI checks the committed bundle matches `src`, but not
-that the version rose with it.
+update only when it rises, and CI rejects a code change that does not raise it.
 
 ### Without the daemon
 

@@ -170,10 +170,13 @@ reads before installing is the code in this repository.
 
 That file's `@updateURL` points at itself on `main`, which makes every merge a
 potential update — but a userscript manager installs one only when `@version`
-rises. A new bundle under an old version reaches nobody, and nothing announces
-that it did not. So the version is written once, in `userscript/package.json`,
-and the build copies it into the header; `pyproject.toml` carries the same
-number, because both halves ship together.
+rises. A new bundle under an old version would reach nobody, so CI
+(`userscript/check-version-bump.mjs`) rejects a pull request that changes the
+bundle's code without raising the version. Comments and whitespace do not
+count: esbuild normalises both bundles first, so a comment fix does not push an
+identical update to everyone. The version is written once, in
+`userscript/package.json`, and the build copies it into the header;
+`pyproject.toml` carries the same number, because both halves ship together.
 
 Greasy Fork strips `@updateURL` and `@downloadURL` from scripts it hosts. An
 install from there updates only from there, and one from GitHub only from

@@ -9,7 +9,8 @@
 [![python: 3.13](https://img.shields.io/badge/python-3.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
 
 Auto-scrolls a Reddit feed in your normal browser on a second monitor, driven by
-global numpad hotkeys — so you can keep reading without leaving a full-screen game.
+global numpad hotkeys — so you can keep reading while another application, such
+as a full-screen game, has focus.
 
 <div align="center">
   <img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
@@ -40,10 +41,12 @@ Two halves:
 That is the whole install, and it is already usable: the numpad scrolls the
 feed whenever the browser has focus. No Python, no Node.
 
+It updates itself from then on.
+
 **2. The daemon** — Windows only, optional, for the case a page cannot cover
 
 A web page only receives keys while it has focus. The daemon hooks the
-keyboard globally, so the numpad still works with a full-screen game in front.
+keyboard globally, so the numpad still works with another application in front.
 That is the only thing it adds.
 
 Unlike step 1, this half is a Python project, so it needs the code and something
@@ -87,6 +90,10 @@ cd userscript && npm install && npm run build
 
 Then reinstall `userscript/dist/reddit-scroller.user.js` through the
 Violentmonkey dashboard → **+** → **Install from file**.
+
+To ship a change, also raise `version` in `userscript/package.json`: managers
+update only when it rises. CI checks the committed bundle matches `src`, but not
+that the version rose with it.
 
 ### Without the daemon
 
@@ -153,8 +160,8 @@ so opening a thread and coming back keeps it — but a new tab starts at
 
 **Numpad `1` switches the script off.** The HUD collapses to a single `OFF` line, the
 blue outline comes off the page, and every other key is ignored — for when you would
-rather just scroll with the wheel, or when your game binds numpad keys of its own and
-you would rather they did not also reach Reddit. Press `1` again to bring it back.
+rather just scroll with the wheel, or when another application uses the numpad and
+you would rather it did not also reach Reddit. Press `1` again to bring it back.
 
 This is the one setting that *is* remembered across tabs and restarts, because it can
 only ever make the script do less. The `OFF` line stays visible so a switched-off
@@ -170,7 +177,7 @@ correct if you rebind anything. With the daemon down it falls back to the defaul
 which are the keys the in-page handler uses anyway. It also appears by itself for six
 seconds when a page loads.
 
-Nothing is suppressed — your game still receives every one of these keys.
+Nothing is suppressed: whatever has focus still receives every key.
 
 ## Configuration
 
@@ -204,18 +211,18 @@ are being handled in the page, and they will stop the moment another window take
 focus. The daemon is not running, it is on a different port than the userscript
 expects, or the browser is blocking the userscript manager's request to
 `127.0.0.1` — see [Browser support](#browser-support), and check the manager's own
-console for a refused or pending local-network request. Otherwise
-check `uv run python -m reddit_scroller` is up and that
-the two sides agree on the port. It lives in two places: `port` in your
+console for a refused or pending local-network request. Otherwise check that
+`uv run python -m reddit_scroller` is up and that the two sides agree on the
+port. It lives in two places: `port` in your
 `config.json`, and a value named `rs-port` that the userscript stores in your
 manager — Violentmonkey and Tampermonkey both expose it under the script's
 **Values** (or **Storage**) tab. Changing one without the other leaves the page
 polling a port nothing is listening on. Neither edit needs a rebuild.
 
-**Hotkeys work on the desktop but not in the game.** Windows will not deliver hooked
-keys from an elevated window to a non-elevated process. Run the daemon from an
-Administrator terminal. Borderless-windowed mode also tends to behave better than
-exclusive full-screen.
+**Hotkeys work everywhere except one application.** It probably runs elevated,
+and Windows will not deliver hooked keys from an elevated window to a
+non-elevated process. Run the daemon from an Administrator terminal. For games,
+borderless-windowed mode also behaves better than exclusive full-screen.
 
 **The HUD says "no posts detected".** Reddit changed its markup and the
 `shreddit-post` selector in `userscript/src/selection.js` needs updating. Scrolling
@@ -265,12 +272,12 @@ CI runs all four suites on every push: the daemon on Windows, since the hotkey
 layer is built around Windows scan codes, and the rest on Linux.
 
 [docs/architecture.md](docs/architecture.md) covers why the design is the way
-it is -- long polling rather than a WebSocket, a userscript rather than an
-extension, loopback with no authentication -- and the limitations that come
+it is — long polling rather than a WebSocket, a userscript rather than an
+extension, loopback with no authentication — and the limitations that come
 with those choices.
 
-Coverage is gated on both halves -- `fail_under` in `pyproject.toml` and
-`thresholds` in `userscript/vitest.config.js` -- and the build fails when it
+Coverage is gated on both halves — `fail_under` in `pyproject.toml` and
+`thresholds` in `userscript/vitest.config.js` — and the build fails when it
 slips below them. Both sit a little under what the suites actually reach, so
 one awkward-to-cover line cannot break an unrelated change. That gate is the
 number worth knowing, and it lives in those two files rather than being

@@ -1,14 +1,21 @@
 // ==UserScript==
 // @name         Reddit Scroller
-// @namespace    local.reddit-scroller
+// @namespace    https://github.com/YokoAC/reddit-scroller
 // @version      0.1.0
-// @description  Hands-free Reddit scrolling driven by global hotkeys
+// @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
+// @author       YokoAC
+// @license      MIT
+// @homepageURL  https://github.com/YokoAC/reddit-scroller
+// @supportURL   https://github.com/YokoAC/reddit-scroller/issues
+// @updateURL    https://raw.githubusercontent.com/YokoAC/reddit-scroller/main/userscript/dist/reddit-scroller.user.js
+// @downloadURL  https://raw.githubusercontent.com/YokoAC/reddit-scroller/main/userscript/dist/reddit-scroller.user.js
 // @match        https://www.reddit.com/*
+// @compatible   firefox
+// @compatible   chrome
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      127.0.0.1
-// @connect      localhost
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==

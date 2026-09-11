@@ -93,8 +93,9 @@ what keeps numpad 8 distinct from the up arrow regardless of Num Lock. Numpad
 code 53, and only `is_keypad` separates the two. Nothing binds it by default,
 for reasons below, but it stays bindable and the collision stays tested.
 
-Nothing is suppressed. Swallowing a key would take it from the focused game,
-which defeats the entire purpose. `suppress=False` on the hook is load-bearing.
+Nothing is suppressed. Swallowing a key would take it from the focused
+application, which defeats the entire purpose. `suppress=False` on the hook is
+load-bearing.
 
 The hook is a single `keyboard.hook()` that dispatches on event type, not a
 `keyboard.on_press` plus a `keyboard.on_release` pair. The library stops
@@ -129,8 +130,8 @@ outline re-computed on every scroll event, including your own wheel scrolling,
 and the HUD was always drawn. "Leave me alone for a bit" was not expressible.
 
 There is a sharper reason than tidiness. The hook is global and suppresses
-nothing, which is the entire point — but it also means a game that binds numpad
-keys is driving the scroller whether or not you meant it to, and short of
+nothing, which is the entire point — but it also means an application that uses
+the numpad is driving the scroller whether or not you meant it to, and short of
 killing the daemon there was no way to say no. `standby` is that no.
 
 Dormant filters commands; it does not stop the poll. The wake key arrives over
@@ -160,6 +161,39 @@ and the fallback handler never sees the press that would switch the script back
 on. Chrome has no such shortcut, so the binding would have behaved differently
 in the two engines this project supports on equal terms — which is the part
 that settles it, ahead of any workaround. A plain digit is claimed by nobody.
+
+### One file, one version, one identity
+
+The bundle in `userscript/dist/` is committed, and it is what people install.
+CI rebuilds it from `src` and fails if the two differ, so the file a person
+reads before installing is the code in this repository.
+
+That file's `@updateURL` points at itself on `main`, which makes every merge a
+potential update — but a userscript manager installs one only when `@version`
+rises. A new bundle under an old version reaches nobody, and nothing announces
+that it did not. So the version is written once, in `userscript/package.json`,
+and the build copies it into the header; `pyproject.toml` carries the same
+number, because both halves ship together.
+
+Greasy Fork strips `@updateURL` and `@downloadURL` from scripts it hosts. An
+install from there updates only from there, and one from GitHub only from
+GitHub, so the two channels cannot overwrite each other.
+
+`@namespace` is the one line that must not move. Managers identify a script by
+`@name` plus `@namespace`, so changing either turns every existing install into
+a second copy rather than an upgrade — and two copies of this script would both
+act on every command, stepping the speed twice per press. It moved once, from a
+private placeholder to the repository URL, before anything had an update
+channel to break.
+
+`@connect` names `127.0.0.1` and nothing else. The loopback bind is the whole
+security boundary on the daemon's side, and a script permitted to reach
+anywhere else would widen it from the other. `localhost` was listed alongside
+it from the start and never used.
+
+`userscript/tests/header.test.js` holds each of these to account, along with
+Greasy Fork's own rules: no remote code, no minification, and a `@match` only
+for the site the script actually works on.
 
 ## Testing
 
@@ -208,5 +242,5 @@ contract drifted twice with every test still green.
   message sent people to edit `config.json`, which silently left the page
   polling the old port with the repair gated behind a toolchain the setup
   otherwise avoids. Both sides are now editable in place.
-- **An elevated game needs an elevated daemon**, or Windows will not deliver
-  hooked keys to it.
+- **An elevated application needs an elevated daemon**, or Windows will not
+  deliver hooked keys to it.

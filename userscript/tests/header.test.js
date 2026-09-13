@@ -103,11 +103,19 @@ describe("the code under the header", () => {
 
   it("is readable rather than minified", () => {
     // Greasy Fork: bundled code "must be output in non-minified form, with
-    // whitespace and variable names retained". A minify flag in build.mjs
-    // would collapse this into a handful of very long lines.
+    // whitespace and variable names retained". Line shape catches collapsed
+    // whitespace; the names catch mangling, which leaves the lines intact.
     const lines = BODY.split("\n");
     expect(lines.length).toBeGreaterThan(200);
     expect(Math.max(...lines.map((line) => line.length))).toBeLessThan(200);
+    for (const name of [
+      "resolveAction",
+      "normalisePort",
+      "formatHud",
+      "rankPosts",
+    ]) {
+      expect(BODY, name).toContain(`function ${name}(`);
+    }
   });
 
   it("asks for exactly the grants it uses", () => {
@@ -142,17 +150,6 @@ describe("the version", () => {
   it("comes from package.json, in the format Greasy Fork expects", () => {
     expect(only("version")).toBe(PACKAGE.version);
     expect(PACKAGE.version).toMatch(/^\d+\.\d+\.\d+$/);
-  });
-
-  it("is the daemon's version too, since both halves ship together", () => {
-    const pyproject = read("../../pyproject.toml").match(
-      /^version = "(.+)"$/m,
-    )[1];
-    const module = read("../../src/reddit_scroller/__init__.py").match(
-      /^__version__ = "(.+)"$/m,
-    )[1];
-    expect(pyproject).toBe(PACKAGE.version);
-    expect(module).toBe(PACKAGE.version);
   });
 });
 

@@ -170,13 +170,14 @@ reads before installing is the code in this repository.
 
 That file's `@updateURL` points at itself on `main`, which makes every merge a
 potential update — but a userscript manager installs one only when `@version`
-rises. A new bundle under an old version would reach nobody, so CI
-(`userscript/check-version-bump.mjs`) rejects a pull request that changes the
-bundle's code without raising the version. Comments and whitespace do not
-count: esbuild normalises both bundles first, so a comment fix does not push an
-identical update to everyone. The version is written once, in
-`userscript/package.json`, and the build copies it into the header;
-`pyproject.toml` carries the same number, because both halves ship together.
+rises. A change under an old version would reach nobody, so CI
+(`userscript/check-version-bump.mjs`) rejects one. Every header line but
+`@version` counts, since a manager applies a new `@connect` or `@grant` only
+when it updates. Comments and whitespace in the code do not: esbuild normalises
+both bundles first, so a comment fix does not push an identical update to
+everyone. The version is written once, in `userscript/package.json`, and the
+build copies it into the header. The daemon keeps its own version: it has no
+update channel, so its number signals nothing to anyone.
 
 Greasy Fork strips `@updateURL` and `@downloadURL` from scripts it hosts. An
 install from there updates only from there, and one from GitHub only from
@@ -186,8 +187,7 @@ GitHub, so the two channels cannot overwrite each other.
 `@name` plus `@namespace`, so changing either turns every existing install into
 a second copy rather than an upgrade — and two copies of this script would both
 act on every command, stepping the speed twice per press. It moved once, from a
-private placeholder to the repository URL, before anything had an update
-channel to break.
+private placeholder to the repository URL, before the script was published.
 
 `@connect` names `127.0.0.1` and nothing else. The loopback bind is the whole
 security boundary on the daemon's side, and a script permitted to reach

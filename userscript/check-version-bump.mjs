@@ -1,16 +1,17 @@
 /**
- * Refuses a change to the userscript's code that does not raise its version.
+ * Refuses a change to the userscript that does not raise its version.
  *
  * Installs update from the bundle on main, and a userscript manager installs
- * an update only when @version rises -- so a code change merged under the old
- * version reaches nobody, and nothing says so. CI runs this on every pull
- * request, against the base branch's bundle:
+ * an update only when @version rises -- so a change merged under the old
+ * version reaches nobody, and nothing says so. CI runs this against the
+ * previous commit's bundle:
  *
  *   node check-version-bump.mjs <base.user.js> <head.user.js>
  *
- * The header is ignored, and so are comments and whitespace: both bodies go
- * through esbuild's own parser, which, unlike a regex, knows that the // in
- * "http://127.0.0.1" belongs to a string.
+ * Every header line but @version counts, since a manager applies a new
+ * @connect or @grant only when it updates. In the code, comments and
+ * whitespace do not: both bodies go through esbuild's parser, which, unlike a
+ * regex, knows that the // in "http://127.0.0.1" belongs to a string.
  */
 
 import { readFileSync } from "node:fs";
@@ -19,26 +20,35 @@ import { pathToFileURL } from "node:url";
 import { transform } from "esbuild";
 
 const HEADER_END = "// ==/UserScript==";
+const VERSION_LINE = /^\/\/ @version[ \t]+(\S+)[ \t]*$/m;
 
-/** A userscript's @version, and the code below its header. */
+/** A userscript's @version, its other header lines, and its code. */
 export function splitUserscript(source) {
-  const end = source.indexOf(HEADER_END);
+  const text = source.replace(/\r\n/g, "\n");
+  const end = text.indexOf(HEADER_END);
   if (end === -1) throw new Error("no ==UserScript== header");
-  const version = source.slice(0, end).match(/^\/\/ @version\s+(\S+)/m)?.[1];
+  const header = text.slice(0, end);
+  const version = header.match(VERSION_LINE)?.[1];
   if (!version) throw new Error("no @version in the header");
-  return { version, code: source.slice(end + HEADER_END.length) };
+  return {
+    version,
+    header: header
+      .split("\n")
+      .filter((line) => !/^\/\/ @version\b/.test(line))
+      .map((line) => line.trimEnd())
+      .join("\n"),
+    code: text.slice(end + HEADER_END.length),
+  };
 }
 
 /** Negative, zero or positive, comparing x.y.z versions number by number. */
 export function compareVersions(a, b) {
-  const parse = (version) =>
-    version.split(".").map((part) => {
-      const n = Number(part);
-      if (!Number.isInteger(n) || n < 0) {
-        throw new Error(`not a numeric version: ${version}`);
-      }
-      return n;
-    });
+  const parse = (version) => {
+    if (!/^\d+(\.\d+)*$/.test(version)) {
+      throw new Error(`not a numeric version: "${version}"`);
+    }
+    return version.split(".").map(Number);
+  };
   const [x, y] = [parse(a), parse(b)];
   for (let i = 0; i < Math.max(x.length, y.length); i++) {
     const diff = (x[i] ?? 0) - (y[i] ?? 0);
@@ -51,27 +61,30 @@ async function normalise(code) {
   return (await transform(code, { minifyWhitespace: true, loader: "js" })).code;
 }
 
-/** Whether `headSource` may replace `baseSource`: same code, or a higher version. */
+/** Whether `headSource` may replace `baseSource`: unchanged, or a higher version. */
 export async function checkVersionBump(baseSource, headSource) {
   const base = splitUserscript(baseSource);
   const head = splitUserscript(headSource);
-  if ((await normalise(base.code)) === (await normalise(head.code))) {
-    return {
-      ok: true,
-      message: `Code unchanged; ${head.version} needs no bump.`,
-    };
+  const changed = [];
+  if (base.header !== head.header) changed.push("header");
+  if ((await normalise(base.code)) !== (await normalise(head.code))) {
+    changed.push("code");
   }
+  if (changed.length === 0) {
+    return { ok: true, message: `Unchanged; ${head.version} needs no bump.` };
+  }
+  const what = changed.join(" and ");
   if (compareVersions(head.version, base.version) > 0) {
     return {
       ok: true,
-      message: `Code changed and the version rose from ${base.version} to ${head.version}.`,
+      message: `The ${what} changed and the version rose from ${base.version} to ${head.version}.`,
     };
   }
   return {
     ok: false,
     message:
-      `The userscript's code changed but its version did not rise ` +
-      `(base ${base.version}, head ${head.version}), so no installed copy would update. ` +
+      `The userscript's ${what} changed but its version did not rise ` +
+      `(${base.version} to ${head.version}), so no installed copy would update. ` +
       `Raise "version" in userscript/package.json and run npm run build.`,
   };
 }

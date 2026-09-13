@@ -79,6 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # One commit of history, for the version check's HEAD^1.
+          fetch-depth: 2
 
       - uses: actions/setup-node@v7
         with:
@@ -137,30 +140,24 @@ jobs:
           fi
         working-directory: userscript
 
-      - name: A code change must raise the version
-        # Installs update from the bundle on main, and a userscript manager
-        # installs an update only when @version rises -- so a code change
-        # merged under the old version reaches nobody, and nothing says so.
-        # Comments and whitespace do not count: the script normalises both
-        # bundles with esbuild, so a comment fix does not push an identical
-        # update to everyone.
+      - name: A change must raise the version
+        # Installs update from the bundle on main, and a manager installs an
+        # update only when @version rises, so a change merged under the old
+        # version reaches nobody. Header lines count; comments and whitespace
+        # in the code do not (see check-version-bump.mjs).
         #
-        # Pull requests only, since it compares against the branch being
-        # merged into. It lives in this job rather than its own because this
-        # job is already a required check, so a failure blocks the merge with
-        # no branch-protection change. The base ref reaches the shell through
-        # env rather than ${{ }} interpolation, the usual guard against
-        # injection through a branch name.
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
+        # The base is HEAD^1: on a pull request, the merge commit's first
+        # parent is the base it was built on; on main, a squash merge's parent
+        # is the previous tip. Running on main as well catches two pull
+        # requests that each passed against an older main. This job is a
+        # required check, so a failure on a pull request blocks the merge.
+        if: github.event_name != 'workflow_dispatch'
         run: |
-          git fetch --depth=1 origin "$BASE_REF"
-          if ! git cat-file -e FETCH_HEAD:userscript/dist/reddit-scroller.user.js 2>/dev/null; then
-            echo "The base branch has no bundle to compare against."
+          if ! git cat-file -e HEAD^1:userscript/dist/reddit-scroller.user.js 2>/dev/null; then
+            echo "No previous bundle to compare against."
             exit 0
           fi
-          git show FETCH_HEAD:userscript/dist/reddit-scroller.user.js > "$RUNNER_TEMP/base.user.js"
+          git show HEAD^1:userscript/dist/reddit-scroller.user.js > "$RUNNER_TEMP/base.user.js"
           node check-version-bump.mjs "$RUNNER_TEMP/base.user.js" dist/reddit-scroller.user.js
         working-directory: userscript
 

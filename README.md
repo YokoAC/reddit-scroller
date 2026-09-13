@@ -92,7 +92,9 @@ Then reinstall `userscript/dist/reddit-scroller.user.js` through the
 Violentmonkey dashboard → **+** → **Install from file**.
 
 To ship a change, also raise `version` in `userscript/package.json`: managers
-update only when it rises, and CI rejects a code change that does not raise it.
+update only when it rises, and CI rejects a change that does not raise it. A
+build installed from file updates from `main` too, once `main`'s version is
+higher.
 
 ### Without the daemon
 
@@ -119,7 +121,7 @@ red: nothing is broken in that state.
 
 Firefox and Chrome both work, and both are tested: `npm run test:browser` runs the
 built bundle in real Firefox and real Chromium against a real daemon, and CI runs
-that suite on every push. Nothing in the page half is engine-specific, and the
+that suite on every pull request. Nothing in the page half is engine-specific, and the
 daemon never learns which browser it is talking to.
 
 One hop those tests have to substitute, so check it once on a browser you have not
@@ -267,7 +269,7 @@ unsigned, patched build, and some configurations refuse to load its private
 `mozglue` assembly. If it fails there, run `npm run test:browser -- --project=chromium`
 locally; the CI job runs both engines on Linux either way.
 
-CI runs all four suites on every push: the daemon on Windows, since the hotkey
+CI runs all four suites on every pull request and push to `main`: the daemon on Windows, since the hotkey
 layer is built around Windows scan codes, and the rest on Linux.
 
 [docs/architecture.md](docs/architecture.md) covers why the design is the way

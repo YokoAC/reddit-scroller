@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.0
+// @version      0.1.1
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT

@@ -24,8 +24,8 @@ export function resolveAction(command, mode) {
 }
 
 // Used only when the browser itself has focus. The daemon covers the case that
-// matters — the game holding focus — but this makes the script usable and
-// testable on its own.
+// matters — another application holding focus — but this makes the script
+// usable and testable on its own.
 const KEY_CODES = {
   Numpad0: "toggle",
   NumpadEnter: "open",

@@ -1,7 +1,7 @@
 [project]
 name = "reddit-scroller"
 version = "0.1.0"
-description = "Hands-free Reddit scrolling driven by global hotkeys"
+description = "Windows companion for the Reddit Scroller userscript: global numpad hotkeys that keep working while another application has focus"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.12",

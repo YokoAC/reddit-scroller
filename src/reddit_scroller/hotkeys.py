@@ -19,7 +19,7 @@ class HotkeyListener:
 
     Keys are matched on (scan_code, is_keypad) rather than by name so that
     numpad 8 stays distinct from the up arrow whatever Num Lock is doing.
-    Nothing is suppressed — a focused game still receives every keystroke.
+    Nothing is suppressed — whatever has focus still receives every keystroke.
     """
 
     def __init__(self, config: Config, on_command: Callable[[str], None]) -> None:

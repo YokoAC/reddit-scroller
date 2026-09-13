@@ -79,6 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # One commit of history, for the version check's HEAD^1.
+          fetch-depth: 2
 
       - uses: actions/setup-node@v7
         with:
@@ -135,6 +138,27 @@ jobs:
             echo "::error::dist/reddit-scroller.user.js is stale. Run 'npm run build' in userscript/ and commit the result."
             exit 1
           fi
+        working-directory: userscript
+
+      - name: A change must raise the version
+        # Installs update from the bundle on main, and a manager installs an
+        # update only when @version rises, so a change merged under the old
+        # version reaches nobody. Header lines count; comments and whitespace
+        # in the code do not (see check-version-bump.mjs).
+        #
+        # The base is HEAD^1: on a pull request, the merge commit's first
+        # parent is the base it was built on; on main, a squash merge's parent
+        # is the previous tip. Running on main as well catches two pull
+        # requests that each passed against an older main. This job is a
+        # required check, so a failure on a pull request blocks the merge.
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          if ! git cat-file -e HEAD^1:userscript/dist/reddit-scroller.user.js 2>/dev/null; then
+            echo "No previous bundle to compare against."
+            exit 0
+          fi
+          git show HEAD^1:userscript/dist/reddit-scroller.user.js > "$RUNNER_TEMP/base.user.js"
+          node check-version-bump.mjs "$RUNNER_TEMP/base.user.js" dist/reddit-scroller.user.js
         working-directory: userscript
 
   integration:

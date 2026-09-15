@@ -162,6 +162,22 @@ on. Chrome has no such shortcut, so the binding would have behaved differently
 in the two engines this project supports on equal terms — which is the part
 that settles it, ahead of any workaround. A plain digit is claimed by nobody.
 
+### Gallery images: Reddit's own buttons
+
+Num 4 and Num 6 step through a gallery post's images by clicking the carousel's
+own previous and next buttons, not by moving the slider directly. Reddit keeps
+its animation, lazy loading and position indicator, and the script holds no
+state of its own about which image is showing.
+
+On current markup the carousel renders into an open shadow root, but the
+buttons are light-DOM children slotted into it (`[slot="nextButton"] button`),
+so a plain query finds them. The lookup also descends into open shadow roots,
+in case Reddit moves them. A closed shadow root would put them out of reach.
+
+The target is the selected post in the feed and the post itself in a thread.
+At either end Reddit marks the button `aria-disabled="true"`, and the key does
+nothing.
+
 ### One file, one version, one identity
 
 The bundle in `userscript/dist/` is committed, and it is what people install.
@@ -235,6 +251,9 @@ contract drifted twice with every test still green.
 - **Windows only** for the daemon, which is built around Windows scan codes.
 - **New Reddit only.** Posts are `<shreddit-post>` elements; if that changes,
   `selection.js` needs updating and the HUD says "no posts detected" meanwhile.
+- **Gallery keys follow Reddit's markup.** They rely on the carousel's
+  `prevButton` and `nextButton` slots; if those change, `gallery.js` needs
+  updating and the keys do nothing meanwhile.
 - **The port is defined twice** — `port` in `config.json` and an `rs-port`
   value in GM storage — and they must agree. The duplication is unavoidable:
   the userscript cannot ask the daemon which port it is on without already

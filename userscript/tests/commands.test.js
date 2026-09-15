@@ -101,6 +101,11 @@ describe("the new commands", () => {
     expect(commandForKeyCode("Numpad1")).toBe("standby");
   });
 
+  it("puts gallery stepping on numpad 4 and 6", () => {
+    expect(commandForKeyCode("Numpad4")).toBe("image_prev");
+    expect(commandForKeyCode("Numpad6")).toBe("image_next");
+  });
+
   it("leaves the numpad slash alone, because Firefox has spent it", () => {
     // "/" opens Quick Find, which takes focus away from the page and stops
     // the fallback handler seeing the next press at all.
@@ -122,6 +127,8 @@ describe("resolveAction covers every command in both modes", () => {
     reverse: ["flipDirection", "flipDirection"],
     help: ["toggleHelp", "toggleHelp"],
     standby: ["toggleStandby", "toggleStandby"],
+    image_prev: ["imagePrev", "imagePrev"],
+    image_next: ["imageNext", "imageNext"],
   };
 
   it.each(Object.entries(EXPECTED))("%s", (command, [feed, thread]) => {

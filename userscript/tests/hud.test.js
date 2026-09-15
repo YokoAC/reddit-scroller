@@ -15,6 +15,8 @@ const CODE_TO_LABEL = {
   Numpad5: "Num 5",
   NumpadMultiply: "Num *",
   Numpad1: "Num 1",
+  Numpad4: "Num 4",
+  Numpad6: "Num 6",
 };
 
 const BASE = {

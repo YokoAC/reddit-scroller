@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.1
+// @version      0.1.2
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT
@@ -34,7 +34,9 @@
     prev: { feed: "selectPrev", thread: "pageUp" },
     reverse: { feed: "flipDirection", thread: "flipDirection" },
     help: { feed: "toggleHelp", thread: "toggleHelp" },
-    standby: { feed: "toggleStandby", thread: "toggleStandby" }
+    standby: { feed: "toggleStandby", thread: "toggleStandby" },
+    image_prev: { feed: "imagePrev", thread: "imagePrev" },
+    image_next: { feed: "imageNext", thread: "imageNext" }
   };
   function resolveAction(command, mode) {
     const byMode = ACTIONS[command];
@@ -51,7 +53,9 @@
     Numpad2: "next",
     Numpad5: "reverse",
     NumpadMultiply: "help",
-    Numpad1: "standby"
+    Numpad1: "standby",
+    Numpad4: "image_prev",
+    Numpad6: "image_next"
   };
   var DEFAULT_BINDINGS = {
     toggle: "numpad0",
@@ -63,10 +67,36 @@
     next: "numpad2",
     reverse: "numpad5",
     help: "numpad_star",
-    standby: "numpad1"
+    standby: "numpad1",
+    image_prev: "numpad4",
+    image_next: "numpad6"
   };
   function commandForKeyCode(code) {
     return KEY_CODES[code] || null;
+  }
+
+  // src/gallery.js
+  var BUTTONS = {
+    prev: '[slot="prevButton"] button',
+    next: '[slot="nextButton"] button'
+  };
+  function deepQuery(root, selector) {
+    const direct = root.querySelector(selector);
+    if (direct) return direct;
+    for (const host of [root, ...root.querySelectorAll("*")]) {
+      if (host.shadowRoot) {
+        const found = deepQuery(host.shadowRoot, selector);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  function stepGallery(post, direction) {
+    if (!post) return false;
+    const button = deepQuery(post, BUTTONS[direction]);
+    if (!button || button.getAttribute("aria-disabled") === "true") return false;
+    button.click();
+    return true;
   }
 
   // src/selection.js
@@ -276,6 +306,8 @@
     ["reverse", "flip scroll direction"],
     ["next", "next post / page down"],
     ["prev", "previous post / page up"],
+    ["image_prev", "previous image in a gallery"],
+    ["image_next", "next image in a gallery"],
     ["open", "open selected post"],
     ["back", "back to the feed"],
     ["help", "show or hide this panel"],
@@ -782,6 +814,9 @@
       const target = window.innerHeight * settings.focus_line;
       window.scrollBy(0, rect.top - target);
     }
+    function galleryPost() {
+      return mode === "feed" ? selection.selectedElement : document.querySelector("shreddit-post");
+    }
     const ACTIONS2 = {
       toggleScroll() {
         engine.toggle();
@@ -834,6 +869,12 @@
       },
       pageUp() {
         window.scrollBy(0, -window.innerHeight * 0.8);
+      },
+      imagePrev() {
+        stepGallery(galleryPost(), "prev");
+      },
+      imageNext() {
+        stepGallery(galleryPost(), "next");
       },
       noop() {
       }

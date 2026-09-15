@@ -140,6 +140,7 @@ to "daemon" in the HUD means it went through.
 | Numpad `+` / `-` | speed up / down by 15 px/s | speed up / down by 15 px/s |
 | Numpad `5` | flip scroll direction | flip scroll direction |
 | Numpad `8` / `2` | select previous / next post | scroll up / down a screen |
+| Numpad `4` / `6` | previous / next image in the selected post's gallery | previous / next image in the post's gallery |
 | Numpad `Enter` | open the selected post | — |
 | Numpad `.` | — | back to the feed |
 | Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
@@ -199,7 +200,7 @@ Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_min
 `numpad_slash` is a poor idea in Firefox, which spends `/` on Quick Find.
 
 Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`,
-`help`, `standby`.
+`help`, `standby`, `image_prev`, `image_next`.
 
 `config.json` is gitignored — it's local to your machine. `config.example.json` is
 the committed template.

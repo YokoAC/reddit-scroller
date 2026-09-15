@@ -15,6 +15,8 @@ const ACTIONS = {
   reverse: { feed: "flipDirection", thread: "flipDirection" },
   help: { feed: "toggleHelp", thread: "toggleHelp" },
   standby: { feed: "toggleStandby", thread: "toggleStandby" },
+  image_prev: { feed: "imagePrev", thread: "imagePrev" },
+  image_next: { feed: "imageNext", thread: "imageNext" },
 };
 
 export function resolveAction(command, mode) {
@@ -37,6 +39,8 @@ const KEY_CODES = {
   Numpad5: "reverse",
   NumpadMultiply: "help",
   Numpad1: "standby",
+  Numpad4: "image_prev",
+  Numpad6: "image_next",
 };
 
 /**
@@ -55,6 +59,8 @@ export const DEFAULT_BINDINGS = {
   reverse: "numpad5",
   help: "numpad_star",
   standby: "numpad1",
+  image_prev: "numpad4",
+  image_next: "numpad6",
 };
 
 export function commandForKeyCode(code) {

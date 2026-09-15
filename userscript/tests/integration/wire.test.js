@@ -286,6 +286,8 @@ describe("the settings contract", () => {
         "back",
         "faster",
         "help",
+        "image_next",
+        "image_prev",
         "next",
         "open",
         "prev",

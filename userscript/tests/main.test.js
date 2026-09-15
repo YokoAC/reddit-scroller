@@ -71,6 +71,8 @@ const SETTINGS = {
     reverse: "numpad5",
     help: "numpad_star",
     standby: "numpad1",
+    image_prev: "numpad4",
+    image_next: "numpad6",
   },
 };
 
@@ -562,6 +564,68 @@ describe("standby", () => {
     expect(page.window.document.querySelector("#rs-hud .rs-help").hidden).toBe(
       true,
     );
+  });
+});
+
+describe("gallery keys", () => {
+  /** Give every post Reddit's carousel buttons; return click counts by title. */
+  function addGalleries(page) {
+    const counts = {};
+    for (const post of page.window.document.querySelectorAll("shreddit-post")) {
+      const title = post.getAttribute("post-title");
+      counts[title] = { prev: 0, next: 0 };
+      post.innerHTML =
+        '<gallery-carousel><span slot="prevButton"><button aria-label="Previous page"></button></span>' +
+        '<span slot="nextButton"><button aria-label="Next page"></button></span></gallery-carousel>';
+      for (const direction of ["prev", "next"]) {
+        post
+          .querySelector(`[slot="${direction}Button"] button`)
+          .addEventListener("click", () => {
+            counts[title][direction]++;
+          });
+      }
+    }
+    return counts;
+  }
+
+  it("steps the selected post's gallery in the feed", async () => {
+    page = await Page.open();
+    const counts = addGalleries(page);
+    const selected = page.selectedTitle;
+    expect(selected).not.toBeNull();
+    await page.send("image_next", "image_next", "image_prev");
+    for (const [title, count] of Object.entries(counts)) {
+      expect(count, title).toEqual(
+        title === selected ? { prev: 1, next: 2 } : { prev: 0, next: 0 },
+      );
+    }
+  });
+
+  it("steps the post's gallery in a thread", async () => {
+    page = await Page.open({
+      url: "https://www.reddit.com/r/a/comments/1/one/",
+    });
+    const counts = addGalleries(page);
+    await page.send("image_next");
+    expect(counts.First).toEqual({ prev: 0, next: 1 });
+    expect(counts.Second).toEqual({ prev: 0, next: 0 });
+  });
+
+  it("works from the keyboard without the daemon", async () => {
+    page = await Page.open({ daemonUp: false });
+    const counts = addGalleries(page);
+    await page.press("Numpad6");
+    await page.press("Numpad4");
+    expect(counts[page.selectedTitle]).toEqual({ prev: 1, next: 1 });
+  });
+
+  it("does nothing on standby", async () => {
+    page = await Page.open();
+    const counts = addGalleries(page);
+    await page.send("standby", "image_next");
+    for (const count of Object.values(counts)) {
+      expect(count).toEqual({ prev: 0, next: 0 });
+    }
   });
 });
 

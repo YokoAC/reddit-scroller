@@ -111,6 +111,8 @@ const HELP_ORDER = [
   ["reverse", "flip scroll direction"],
   ["next", "next post / page down"],
   ["prev", "previous post / page up"],
+  ["image_prev", "previous image in a gallery"],
+  ["image_next", "next image in a gallery"],
   ["open", "open selected post"],
   ["back", "back to the feed"],
   ["help", "show or hide this panel"],

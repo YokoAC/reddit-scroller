@@ -1,6 +1,7 @@
 /** Entry point: wires the transport, scroll engine, selection and HUD together. */
 
 import { commandForKeyCode, detectMode, resolveAction } from "./commands.js";
+import { stepGallery } from "./gallery.js";
 import { Hud } from "./hud.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
@@ -191,6 +192,13 @@ function boot() {
     window.scrollBy(0, rect.top - target);
   }
 
+  // The selected post in the feed; in a thread, the post itself.
+  function galleryPost() {
+    return mode === "feed"
+      ? selection.selectedElement
+      : document.querySelector("shreddit-post");
+  }
+
   const ACTIONS = {
     toggleScroll() {
       engine.toggle();
@@ -245,6 +253,12 @@ function boot() {
     },
     pageUp() {
       window.scrollBy(0, -window.innerHeight * 0.8);
+    },
+    imagePrev() {
+      stepGallery(galleryPost(), "prev");
+    },
+    imageNext() {
+      stepGallery(galleryPost(), "next");
     },
     noop() {},
   };

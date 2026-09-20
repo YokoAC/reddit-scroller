@@ -13,7 +13,7 @@ global numpad hotkeys — so you can keep reading while another application, suc
 as a full-screen game, has focus.
 
 <div align="center">
-  <img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
+  <img src="docs/screenshot.png" alt="A Reddit feed scrolling: the post in focus outlined in blue, and the HUD bottom-right showing the state, speed and that post's title">
 </div>
 
 Two halves:
@@ -133,6 +133,10 @@ aimed at the local network, and could prompt for it or refuse it. A green dot ne
 to "daemon" in the HUD means it went through.
 
 ## Controls
+
+<div align="center">
+  <img src="docs/hud.svg" alt="The on-screen HUD: state, speed, the post in focus, and the hotkey panel" width="392">
+</div>
 
 | Key | In the feed | In a thread |
 |---|---|---|

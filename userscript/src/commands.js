@@ -28,7 +28,7 @@ export function resolveAction(command, mode) {
 // Used only when the browser itself has focus. The daemon covers the case that
 // matters — another application holding focus — but this makes the script
 // usable and testable on its own.
-const KEY_CODES = {
+export const KEY_CODES = {
   Numpad0: "toggle",
   NumpadEnter: "open",
   NumpadDecimal: "back",

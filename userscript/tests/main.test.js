@@ -148,6 +148,10 @@ class Page {
     window.GM_setValue = (key, value) => {
       page.stored[key] = value;
     };
+    page.menu = {};
+    window.GM_registerMenuCommand = (name, run) => {
+      page.menu[name] = run;
+    };
 
     window.GM_xmlhttpRequest = (opts) => {
       page.urls.push(opts.url);
@@ -626,6 +630,148 @@ describe("gallery keys", () => {
     for (const count of Object.values(counts)) {
       expect(count).toEqual({ prev: 0, next: 0 });
     }
+  });
+});
+
+describe("key bindings", () => {
+  const doc = () => page.window.document;
+  const panel = () => doc().getElementById("rs-bindings");
+  const gear = () => doc().querySelector("#rs-hud button.rs-gear");
+  const bindButton = (command) =>
+    panel().querySelector(`button[data-command="${command}"]`);
+
+  /** Dispatch a cancelable keydown and hand the event back for inspection. */
+  async function fire(code, init = {}) {
+    const event = new page.window.KeyboardEvent("keydown", {
+      code,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    // On body, so it travels window -> document -> body like a real key.
+    doc().body.dispatchEvent(event);
+    await page.settle();
+    return event;
+  }
+
+  it("opens from the gear and from the manager's menu", async () => {
+    page = await Page.open({ daemonUp: false });
+    gear().click();
+    expect(panel()).not.toBeNull();
+    panel().querySelector("button[data-close]").click();
+    expect(panel()).toBeNull();
+    page.menu["Key bindings"]();
+    expect(panel()).not.toBeNull();
+  });
+
+  it("rebinds a key, uses it, frees the old one, and remembers", async () => {
+    page = await Page.open({ daemonUp: false });
+    gear().click();
+    bindButton("toggle").click();
+    await fire("Space", { key: " " });
+    // Binding a key must not also run the command.
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+    expect(page.stored["rs-bindings"].toggle).toEqual({
+      code: "Space",
+      label: "Space",
+    });
+    await fire("Escape", { key: "Escape" });
+    expect(panel()).toBeNull();
+
+    await fire("Numpad0");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+    await fire("Space", { key: " " });
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("starts with the bindings the manager has stored", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-bindings": { faster: { code: "KeyF", label: "F" } } },
+    });
+    await fire("KeyF", { key: "f" });
+    expect(page.hud(".rs-speed")).toBe("▼ 105 px/s");
+  });
+
+  it("does not treat keys as commands while the panel is open", async () => {
+    page = await Page.open({ daemonUp: false });
+    gear().click();
+    await fire("Numpad0");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+  });
+
+  it("leaves a bound key alone when Ctrl, Alt or Meta is held", async () => {
+    // Binding F must not cost the user Ctrl+F.
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-bindings": { faster: { code: "KeyF", label: "F" } } },
+    });
+    for (const modifier of ["ctrlKey", "altKey", "metaKey"]) {
+      const event = await fire("KeyF", { key: "f", [modifier]: true });
+      expect(event.defaultPrevented, modifier).toBe(false);
+    }
+    expect(page.hud(".rs-speed")).toBe("▼ 90 px/s");
+  });
+
+  it("takes a bound key away from the page, and only a bound key", async () => {
+    page = await Page.open({ daemonUp: false });
+    let reached = 0;
+    doc().addEventListener("keydown", () => {
+      reached++;
+    });
+    const bound = await fire("Numpad2");
+    expect(bound.defaultPrevented).toBe(true);
+    expect(reached).toBe(0);
+    const free = await fire("KeyQ");
+    expect(free.defaultPrevented).toBe(false);
+    expect(reached).toBe(1);
+  });
+
+  it("gives the keys back to the page on standby, except the way out", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-standby": true },
+    });
+    expect((await fire("Numpad2")).defaultPrevented).toBe(false);
+    expect((await fire("Numpad1")).defaultPrevented).toBe(true);
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+  });
+
+  it("lists the page's own bindings in the help panel without a daemon", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-bindings": { toggle: { code: "Space", label: "Space" } } },
+    });
+    await fire("NumpadMultiply");
+    const help = doc().querySelector("#rs-hud .rs-help");
+    expect(help.hidden).toBe(false);
+    expect(help.textContent).toContain("Space");
+    expect(help.textContent).not.toContain("Num 0");
+  });
+
+  it("saves a preset from its button", async () => {
+    page = await Page.open({ daemonUp: false });
+    gear().click();
+    panel().querySelector('button[data-preset="laptop"]').click();
+    expect(page.stored["rs-bindings"].toggle.code).toBe("Space");
+    await fire("Escape", { key: "Escape" });
+    await fire("Space", { key: " " });
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("with the daemon connected, says so and leaves the keys to it", async () => {
+    page = await Page.open({
+      stored: { "rs-bindings": { toggle: { code: "Space", label: "Space" } } },
+    });
+    const event = await fire("Space", { key: " " });
+    expect(event.defaultPrevented).toBe(false);
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+    gear().click();
+    expect(panel().querySelector(".rs-bindings-note").hidden).toBe(false);
+    // The help panel still shows what the daemon is actually bound to.
+    expect(doc().querySelector("#rs-hud .rs-help").textContent).toContain(
+      "Num 0",
+    );
   });
 });
 

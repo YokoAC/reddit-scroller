@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.2
+// @version      0.1.3
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT
@@ -15,6 +15,7 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // @connect      127.0.0.1
 // @run-at       document-idle
 // @noframes
@@ -71,8 +72,110 @@
     image_prev: "numpad4",
     image_next: "numpad6"
   };
-  function commandForKeyCode(code) {
-    return KEY_CODES[code] || null;
+
+  // src/bindings.js
+  var PRESETS = {
+    // The defaults, kept in commands.js; here only turned command -> key.
+    numpad: Object.fromEntries(
+      Object.entries(KEY_CODES).map(([code, command]) => [command, code])
+    ),
+    // Only keys that sit in the same place on QWERTY and QWERTZ.
+    laptop: {
+      toggle: "Space",
+      open: "Enter",
+      back: "Backspace",
+      faster: "KeyF",
+      slower: "KeyS",
+      prev: "ArrowUp",
+      next: "ArrowDown",
+      reverse: "KeyR",
+      help: "KeyH",
+      standby: "KeyO",
+      image_prev: "ArrowLeft",
+      image_next: "ArrowRight"
+    }
+  };
+  var COMMANDS = Object.keys(PRESETS.numpad);
+  var NAMED = {
+    NumpadDecimal: "Num .",
+    NumpadAdd: "Num +",
+    NumpadSubtract: "Num \u2212",
+    NumpadMultiply: "Num *",
+    NumpadDivide: "Num /",
+    NumpadEnter: "Num Enter",
+    Space: "Space",
+    Enter: "Enter",
+    Backspace: "Backspace",
+    Tab: "Tab",
+    Delete: "Delete",
+    ArrowUp: "\u2191",
+    ArrowDown: "\u2193",
+    ArrowLeft: "\u2190",
+    ArrowRight: "\u2192"
+  };
+  function labelFor(code, key) {
+    if (NAMED[code]) return NAMED[code];
+    const numpad = code.match(/^Numpad(\d)$/);
+    if (numpad) return `Num ${numpad[1]}`;
+    if (typeof key === "string" && key.length === 1) return key.toUpperCase();
+    const plain = code.match(/^(?:Key|Digit)(.)$/);
+    return plain ? plain[1] : code;
+  }
+  function fromPreset(name) {
+    return Object.fromEntries(
+      Object.entries(PRESETS[name]).map(([command, code]) => [
+        command,
+        { code, label: labelFor(code) }
+      ])
+    );
+  }
+  function parseStored(raw) {
+    let stored = raw;
+    if (typeof raw === "string") {
+      try {
+        stored = JSON.parse(raw);
+      } catch {
+        stored = null;
+      }
+    }
+    if (!stored || typeof stored !== "object" || Array.isArray(stored)) {
+      stored = {};
+    }
+    const defaults = fromPreset("numpad");
+    const result = {};
+    const taken = /* @__PURE__ */ new Set();
+    for (const command of COMMANDS) {
+      const entry = stored[command];
+      let binding = defaults[command];
+      if (entry === null) {
+        binding = null;
+      } else if (entry && typeof entry.code === "string" && typeof entry.label === "string") {
+        binding = { code: entry.code, label: entry.label };
+      }
+      if (binding && taken.has(binding.code)) binding = null;
+      if (binding) taken.add(binding.code);
+      result[command] = binding;
+    }
+    return result;
+  }
+  function assign(bindings, command, code, key) {
+    const next = {};
+    for (const [other, binding] of Object.entries(bindings)) {
+      next[other] = binding?.code === code ? null : binding;
+    }
+    next[command] = { code, label: labelFor(code, key) };
+    return next;
+  }
+  function commandFor(bindings, code) {
+    for (const [command, binding] of Object.entries(bindings)) {
+      if (binding?.code === code) return command;
+    }
+    return null;
+  }
+  function labelsOf(bindings) {
+    return Object.fromEntries(
+      Object.entries(bindings).filter(([, binding]) => binding).map(([command, binding]) => [command, binding.label])
+    );
   }
 
   // src/gallery.js
@@ -239,6 +342,21 @@
    rest. A dormant script that draws nothing looks like a broken one. */
 #${HUD_ID}.rs-collapsed { width: auto; opacity: 0.8; }
 #${HUD_ID}.rs-collapsed > *:not(:first-child) { display: none; }
+/* The one clickable thing on a panel that otherwise lets every click through. */
+#${HUD_ID} .rs-daemon { margin-left: auto; }
+#${HUD_ID} .rs-gear {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+}
+#${HUD_ID} .rs-gear:hover, #${HUD_ID} .rs-gear:focus-visible { opacity: 1; }
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -310,7 +428,7 @@
     ["image_next", "next image in a gallery"],
     ["open", "open selected post"],
     ["back", "back to the feed"],
-    ["help", "show or hide this panel"],
+    ["help", "show or hide the key list"],
     ["standby", "switch the script off / on"]
   ];
   function helpRows(bindings) {
@@ -359,8 +477,9 @@
     };
   }
   var Hud = class {
-    constructor(doc) {
+    constructor(doc, { onSettings } = {}) {
       this._doc = doc;
+      this._onSettings = onSettings;
       this._root = null;
       this._nodes = null;
     }
@@ -369,6 +488,7 @@
       if (existing) {
         this._root = existing;
         this._nodes = this._collect(existing);
+        this._wire(existing);
         return;
       }
       if (!this._doc.getElementById(STYLE_ID)) {
@@ -383,6 +503,7 @@
       <div class="rs-row">
         <span class="rs-status"></span>
         <span class="rs-daemon"></span>
+        <button type="button" class="rs-gear" aria-label="Key bindings">\u2699</button>
       </div>
       <div class="rs-rule"></div>
       <div class="rs-row">
@@ -398,6 +519,10 @@
       this._doc.body.appendChild(root);
       this._root = root;
       this._nodes = this._collect(root);
+      this._wire(root);
+    }
+    _wire(root) {
+      root.querySelector(".rs-gear")?.addEventListener("click", () => this._onSettings?.());
     }
     _collect(root) {
       return {
@@ -457,6 +582,186 @@
       }
       this._root = null;
       this._nodes = null;
+    }
+  };
+
+  // src/panel.js
+  var PANEL_ID = "rs-bindings";
+  var STYLE_ID2 = "rs-bindings-style";
+  var CSS2 = `
+#${PANEL_ID} {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2147483647;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: rgb(16, 16, 20);
+  color: #f2f2f2;
+  font: 500 15px/1.4 "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+#${PANEL_ID} h2 { margin: 0 0 10px; font-size: 17px; color: #f2f2f2; }
+#${PANEL_ID} .rs-bindings-note { margin: 0 0 10px; font-size: 13px; color: #e3b341; }
+#${PANEL_ID} .rs-bindings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 0;
+}
+#${PANEL_ID} button {
+  font: inherit;
+  color: #f2f2f2;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+#${PANEL_ID} button:hover, #${PANEL_ID} button:focus-visible { border-color: #58a6ff; }
+#${PANEL_ID} button[data-command] {
+  min-width: 120px;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  color: #58a6ff;
+}
+#${PANEL_ID} .rs-bindings-foot {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+#${PANEL_ID} button[data-close] { margin-left: auto; }
+`;
+  var MODIFIER = /^(Shift|Control|Alt|Meta|OS)/;
+  var BindingsPanel = class {
+    /**
+     * @param rows [command, description] pairs, in display order.
+     * The panel holds no bindings itself: it reads them through `getBindings`
+     * and reports changes through `onAssign` and `onPreset`.
+     */
+    constructor(doc, { rows, getBindings, isDaemonConnected, onAssign, onPreset }) {
+      this._doc = doc;
+      this._rows = rows;
+      this._getBindings = getBindings;
+      this._isDaemonConnected = isDaemonConnected;
+      this._onAssign = onAssign;
+      this._onPreset = onPreset;
+      this._root = null;
+      this._capturing = null;
+    }
+    get open() {
+      return this._root !== null;
+    }
+    /** The command waiting for a key, or null. */
+    get capturing() {
+      return this._capturing;
+    }
+    toggle() {
+      if (this.open) this.hide();
+      else this.show();
+    }
+    show() {
+      if (this.open) return;
+      if (!this._doc.getElementById(STYLE_ID2)) {
+        const style = this._doc.createElement("style");
+        style.id = STYLE_ID2;
+        style.textContent = CSS2;
+        this._doc.head.appendChild(style);
+      }
+      const root = this._doc.createElement("div");
+      root.id = PANEL_ID;
+      root.setAttribute("role", "dialog");
+      root.setAttribute("aria-label", "Key bindings");
+      root.addEventListener("click", (event) => this._onClick(event));
+      this._doc.body.appendChild(root);
+      this._root = root;
+      this.render();
+    }
+    hide() {
+      this._root?.remove();
+      this._root = null;
+      this._capturing = null;
+    }
+    /**
+     * Offer a keydown to the panel. Returns whether it took it: every key while
+     * open, so that rebinding never also runs the command being rebound.
+     */
+    handleKey(event) {
+      if (!this.open) return false;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.code === "Escape") {
+        if (this._capturing) this._capturing = null;
+        else this.hide();
+      } else if (this._capturing && !MODIFIER.test(event.code)) {
+        this._onAssign(this._capturing, event.code, event.key);
+        this._capturing = null;
+      }
+      this.render();
+      return true;
+    }
+    render() {
+      if (!this.open) return;
+      const bindings = this._getBindings();
+      const root = this._root;
+      root.textContent = "";
+      const title = this._doc.createElement("h2");
+      title.textContent = "Key bindings";
+      const note = this._doc.createElement("p");
+      note.className = "rs-bindings-note";
+      note.textContent = "The daemon is connected, so the keys in its config.json are active. These apply when it is not running.";
+      note.hidden = !this._isDaemonConnected();
+      root.append(title, note);
+      for (const [command, description] of this._rows) {
+        const row = this._doc.createElement("div");
+        row.className = "rs-bindings-row";
+        const label = this._doc.createElement("span");
+        label.textContent = description;
+        const button = this._button(
+          this._capturing === command ? "press a key\u2026" : bindings[command]?.label ?? "unbound",
+          "command",
+          command
+        );
+        row.append(label, button);
+        root.append(row);
+      }
+      const foot = this._doc.createElement("div");
+      foot.className = "rs-bindings-foot";
+      foot.append(
+        this._button("Numpad (default)", "preset", "numpad"),
+        this._button("Laptop", "preset", "laptop"),
+        this._button("Close", "close", "")
+      );
+      root.append(foot);
+    }
+    _button(text, dataKey, dataValue) {
+      const button = this._doc.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      button.dataset[dataKey] = dataValue;
+      return button;
+    }
+    _onClick(event) {
+      const button = event.target.closest?.("button");
+      if (!button) return;
+      const { command, preset } = button.dataset;
+      if (command) {
+        this._capturing = command;
+      } else if (preset) {
+        this._capturing = null;
+        this._onPreset(preset);
+      } else {
+        this.hide();
+        return;
+      }
+      this.render();
     }
   };
 
@@ -678,6 +983,7 @@
   // src/main.js
   var PORT_KEY = "rs-port";
   var STANDBY_KEY = "rs-standby";
+  var BINDINGS_KEY = "rs-bindings";
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
   var HELP_AUTOSHOW_MS = 6e3;
@@ -733,6 +1039,19 @@
     } catch {
     }
   }
+  function loadBindings() {
+    try {
+      return parseStored(GM_getValue(BINDINGS_KEY));
+    } catch {
+      return fromPreset("numpad");
+    }
+  }
+  function saveBindings(bindings) {
+    try {
+      GM_setValue(BINDINGS_KEY, bindings);
+    } catch {
+    }
+  }
   function boot() {
     const settings = { ...DEFAULTS };
     const persisted = loadPersisted();
@@ -753,10 +1072,11 @@
       getViewportHeight: () => window.innerHeight,
       focusLine: settings.focus_line
     });
-    const hud = new Hud(document);
+    const hud = new Hud(document, { onSettings: () => panel.toggle() });
     hud.mount();
     let mode = detectMode(window.location.pathname);
     let standby = loadStandby();
+    let bindings = loadBindings();
     let daemonConnected = false;
     let helpVisible = false;
     let helpTimer = null;
@@ -775,7 +1095,9 @@
         postCount: selection.count,
         daemonConnected,
         lastCommand,
-        bindings: settings.bindings,
+        // Whichever side is handling keys right now: the daemon's config, or
+        // the page's own bindings.
+        bindings: daemonConnected ? settings.bindings : labelsOf(bindings),
         helpVisible,
         standby
       };
@@ -879,8 +1201,9 @@
       noop() {
       }
     };
+    const ignoredOnStandby = (command) => standby && command !== "standby" && command !== "help";
     function handleCommand(command) {
-      if (standby && command !== "standby" && command !== "help") return;
+      if (ignoredOnStandby(command)) return;
       flash(command);
       (ACTIONS2[resolveAction(command, mode)] || ACTIONS2.noop)();
       refresh();
@@ -925,20 +1248,46 @@
           }
         }
         refresh();
+        panel.render();
       }
     });
+    function setBindings(next) {
+      bindings = next;
+      saveBindings(bindings);
+      paint();
+    }
+    const panel = new BindingsPanel(document, {
+      rows: HELP_ORDER,
+      getBindings: () => bindings,
+      isDaemonConnected: () => daemonConnected,
+      onAssign: (command, code, key) => setBindings(assign(bindings, command, code, key)),
+      onPreset: (name) => setBindings(fromPreset(name))
+    });
+    try {
+      GM_registerMenuCommand("Key bindings", () => panel.toggle());
+    } catch {
+    }
     function isTyping(target) {
       if (!target) return false;
       if (target.isContentEditable) return true;
       return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
     }
     window.addEventListener("scroll", refresh, { passive: true });
-    window.addEventListener("keydown", (event) => {
-      if (isTyping(event.target)) return;
-      if (daemonConnected) return;
-      const command = commandForKeyCode(event.code);
-      if (command) handleCommand(command);
-    });
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (panel.handleKey(event)) return;
+        if (isTyping(event.target)) return;
+        if (daemonConnected) return;
+        if (event.ctrlKey || event.altKey || event.metaKey) return;
+        const command = commandFor(bindings, event.code);
+        if (!command || ignoredOnStandby(command)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleCommand(command);
+      },
+      true
+    );
     window.addEventListener("popstate", refresh);
     window.addEventListener("pagehide", saveSpeed);
     setInterval(() => transport.postState(snapshot()), 1e3);

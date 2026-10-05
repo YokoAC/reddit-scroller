@@ -41,6 +41,21 @@ const CSS = `
    rest. A dormant script that draws nothing looks like a broken one. */
 #${HUD_ID}.rs-collapsed { width: auto; opacity: 0.8; }
 #${HUD_ID}.rs-collapsed > *:not(:first-child) { display: none; }
+/* The one clickable thing on a panel that otherwise lets every click through. */
+#${HUD_ID} .rs-daemon { margin-left: auto; }
+#${HUD_ID} .rs-gear {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+}
+#${HUD_ID} .rs-gear:hover, #${HUD_ID} .rs-gear:focus-visible { opacity: 1; }
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -104,7 +119,7 @@ const KEY_LABELS = {
 };
 
 // Order the panel reads in, not whatever order the daemon serialised.
-const HELP_ORDER = [
+export const HELP_ORDER = [
   ["toggle", "pause / resume"],
   ["faster", "speed up (hold to ramp)"],
   ["slower", "slow down (hold to ramp)"],
@@ -115,7 +130,7 @@ const HELP_ORDER = [
   ["image_next", "next image in a gallery"],
   ["open", "open selected post"],
   ["back", "back to the feed"],
-  ["help", "show or hide this panel"],
+  ["help", "show or hide the key list"],
   ["standby", "switch the script off / on"],
 ];
 
@@ -181,8 +196,9 @@ export function formatHud(state) {
 }
 
 export class Hud {
-  constructor(doc) {
+  constructor(doc, { onSettings } = {}) {
     this._doc = doc;
+    this._onSettings = onSettings;
     this._root = null;
     this._nodes = null;
   }
@@ -193,6 +209,7 @@ export class Hud {
       // Adopt a panel a previous instance left behind, so render() still works.
       this._root = existing;
       this._nodes = this._collect(existing);
+      this._wire(existing);
       return;
     }
 
@@ -209,6 +226,7 @@ export class Hud {
       <div class="rs-row">
         <span class="rs-status"></span>
         <span class="rs-daemon"></span>
+        <button type="button" class="rs-gear" aria-label="Key bindings">⚙</button>
       </div>
       <div class="rs-rule"></div>
       <div class="rs-row">
@@ -224,6 +242,14 @@ export class Hud {
     this._doc.body.appendChild(root);
     this._root = root;
     this._nodes = this._collect(root);
+    this._wire(root);
+  }
+
+  _wire(root) {
+    // Optional chaining: a panel adopted from an older version has no gear.
+    root
+      .querySelector(".rs-gear")
+      ?.addEventListener("click", () => this._onSettings?.());
   }
 
   _collect(root) {

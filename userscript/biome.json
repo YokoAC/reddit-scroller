@@ -24,6 +24,11 @@
       "trailingCommas": "all",
       "semicolons": "always"
     },
-    "globals": ["GM_xmlhttpRequest", "GM_setValue", "GM_getValue"]
+    "globals": [
+      "GM_xmlhttpRequest",
+      "GM_setValue",
+      "GM_getValue",
+      "GM_registerMenuCommand"
+    ]
   }
 }

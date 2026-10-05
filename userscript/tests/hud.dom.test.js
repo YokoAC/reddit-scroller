@@ -43,6 +43,38 @@ describe("Hud", () => {
     expect(root.classList.contains("rs-collapsed")).toBe(false);
   });
 
+  it("has a gear that reports clicks, and is the only clickable part", () => {
+    let clicks = 0;
+    const hud = new Hud(document, {
+      onSettings: () => {
+        clicks++;
+      },
+    });
+    hud.mount();
+    const gear = document.querySelector(`#${HUD_ID} button.rs-gear`);
+    expect(gear.getAttribute("aria-label")).toBe("Key bindings");
+    gear.click();
+    expect(clicks).toBe(1);
+    // It sits in the row that survives standby, so it stays reachable.
+    expect(gear.parentElement).toBe(
+      document.getElementById(HUD_ID).firstElementChild,
+    );
+    expect(document.querySelectorAll(`#${HUD_ID} button`)).toHaveLength(1);
+  });
+
+  it("wires the gear on a panel it adopts", () => {
+    new Hud(document).mount();
+    let clicks = 0;
+    const second = new Hud(document, {
+      onSettings: () => {
+        clicks++;
+      },
+    });
+    second.mount();
+    document.querySelector(`#${HUD_ID} button.rs-gear`).click();
+    expect(clicks).toBe(1);
+  });
+
   it("mounting twice does not produce two panels", () => {
     const hud = new Hud(document);
     hud.mount();

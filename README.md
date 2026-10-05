@@ -114,8 +114,8 @@ small command-line client would do the same job without hooking anything.
 
 The HUD names which of the two is driving. **`● daemon`** in green means the
 daemon is; **`● browser only`** in amber means the page is, and that the hotkey
-panel is showing built-in defaults rather than your `config.json`. Amber, not
-red: nothing is broken in that state.
+panel is showing the page's own bindings rather than your `config.json`. Amber,
+not red: nothing is broken in that state.
 
 ## Browser support
 
@@ -178,10 +178,26 @@ The selected post is outlined in blue and named in the HUD. While auto-scrolling
 follows whatever sits a quarter of the way down the screen; pressing `8` or `2` pins
 your choice until it scrolls off.
 
-The hotkey panel lists your *actual* bindings, read from the daemon — so it stays
-correct if you rebind anything. With the daemon down it falls back to the defaults,
-which are the keys the in-page handler uses anyway. It also appears by itself for six
-seconds when a page loads.
+The hotkey panel lists your *actual* bindings: the daemon's while it is connected,
+the page's own otherwise. It also appears by itself for six seconds when a page loads.
+
+### Changing the keys
+
+**No numpad?** Click the gear on the HUD, or pick *Key bindings* in your userscript
+manager's menu, and press **Laptop**: Space pauses, the arrows pick posts and gallery
+images, Enter and Backspace open and go back, `F` / `S` change speed, `R` reverses,
+`H` shows the keys and `O` switches the script off.
+
+To change a single key, click its row and press the key you want. A key that was in
+use moves to the new action. **Numpad (default)** puts everything back. Bindings are
+kept per browser until you change them.
+
+These are the keys the page itself listens for, so any key works: it is ignored while
+you type in a text field, and with Ctrl, Alt or Meta held, so binding `F` leaves
+Ctrl+F alone. A bound key no longer does what it normally does on Reddit.
+
+While the daemon is connected its `config.json` keys are the ones in effect, and the
+panel says so. Those are numpad-only for now; see [Configuration](#configuration).
 
 Nothing is suppressed: whatever has focus still receives every key.
 
@@ -198,6 +214,9 @@ you leave out keeps its default.
 | `speed_min` / `speed_max` | `15` / `600` | Speed limits. |
 | `focus_line` | `0.25` | Where the "current post" line sits, as a fraction of screen height. |
 | `bindings` | see above | Command → key name. |
+
+`bindings` here are the daemon's global hotkeys. For the page's own keys, see
+[Changing the keys](#changing-the-keys).
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to

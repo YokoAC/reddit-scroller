@@ -39,7 +39,8 @@ Two halves:
 3. Open `https://www.reddit.com`. The HUD appears bottom-right.
 
 That is the whole install, and it is already usable: the numpad scrolls the
-feed whenever the browser has focus. No Python, no Node.
+feed whenever the browser has focus. No Python, no Node. No numpad either?
+[Change the keys](#changing-the-keys).
 
 It updates itself from then on.
 
@@ -183,21 +184,20 @@ the page's own otherwise. It also appears by itself for six seconds when a page 
 
 ### Changing the keys
 
-**No numpad?** Click the gear on the HUD, or pick *Key bindings* in your userscript
-manager's menu, and press **Laptop**: Space pauses, the arrows pick posts and gallery
-images, Enter and Backspace open and go back, `F` / `S` change speed, `R` reverses,
-`H` shows the keys and `O` switches the script off.
+Click the gear on the HUD, or *Key bindings* in your userscript manager's menu.
 
-To change a single key, click its row and press the key you want. A key that was in
-use moves to the new action. **Numpad (default)** puts everything back. Bindings are
-kept per browser until you change them.
+- **Laptop** is a preset for keyboards without a numpad: Space pauses, the arrows
+  pick posts and gallery images, Enter and Backspace open and go back, `F` / `S`
+  change speed, `R` reverses, `H` shows the keys, `O` switches the script off.
+- **To change one key**, click its row and press the new key. A key already in use
+  moves over.
+- **Numpad (default)** puts everything back.
 
-These are the keys the page itself listens for, so any key works: it is ignored while
-you type in a text field, and with Ctrl, Alt or Meta held, so binding `F` leaves
-Ctrl+F alone. A bound key no longer does what it normally does on Reddit.
+Bindings are kept per browser. A bound key stops doing what it normally does on
+Reddit, except while you type in a text field or hold Ctrl, Alt or Meta.
 
-While the daemon is connected its `config.json` keys are the ones in effect, and the
-panel says so. Those are numpad-only for now; see [Configuration](#configuration).
+With the daemon connected, the keys in its `config.json` apply instead; those are
+numpad-only for now.
 
 Nothing is suppressed: whatever has focus still receives every key.
 

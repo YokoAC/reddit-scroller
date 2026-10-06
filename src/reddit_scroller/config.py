@@ -7,6 +7,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, cast
 
+from .keys import CODES
+
 COMMANDS = frozenset(
     {
         "toggle",
@@ -67,6 +69,13 @@ _NAMES_BY_CODE: dict[tuple[int, bool], str] = {
 }
 
 
+# The same inversion for the browser's key names. Every pair config.json can
+# name is also in CODES, so this never misses.
+_CODE_BY_KEY: dict[tuple[int, bool], str] = {
+    identity: code for code, identity in CODES.items()
+}
+
+
 class ConfigError(Exception):
     """Raised when config.json cannot be understood."""
 
@@ -105,6 +114,13 @@ class Config:
             for command, binding in self.bindings.items()
         }
 
+    def binding_codes(self) -> dict[str, str]:
+        """Command -> ``KeyboardEvent.code``, the name the userscript uses."""
+        return {
+            command: _CODE_BY_KEY[(binding.scan_code, binding.is_keypad)]
+            for command, binding in self.bindings.items()
+        }
+
     def browser_settings(self) -> dict[str, Any]:
         """The subset of config the userscript needs to know about."""
         return {
@@ -114,7 +130,57 @@ class Config:
             "default_speed": self.default_speed,
             "focus_line": self.focus_line,
             "bindings": self.binding_names(),
+            "binding_codes": self.binding_codes(),
         }
+
+
+@dataclass(frozen=True)
+class ResolvedCodes:
+    """Bindings sent by the userscript, turned into what the hook matches."""
+
+    bindings: dict[str, KeyBinding]
+    codes: dict[str, str]
+    #: Commands whose key the hook cannot listen for. They stay page-only.
+    unsupported: list[str]
+
+    def names(self) -> dict[str, str]:
+        """Command -> the config.json name where there is one, else the code."""
+        return {
+            command: _NAMES_BY_CODE.get(
+                (binding.scan_code, binding.is_keypad), self.codes[command]
+            )
+            for command, binding in self.bindings.items()
+        }
+
+
+def resolve_codes(payload: object) -> ResolvedCodes:
+    """Validate a command -> ``KeyboardEvent.code`` map from the userscript.
+
+    A key the hook does not know, or one already taken by an earlier command,
+    is reported rather than refused: the rest of the bindings still apply.
+    Anything that is not such a map at all raises ConfigError.
+    """
+    if not isinstance(payload, dict):
+        raise ConfigError("bindings must be an object of command -> key code")
+    bindings: dict[str, KeyBinding] = {}
+    codes: dict[str, str] = {}
+    unsupported: list[str] = []
+    taken: set[tuple[int, bool]] = set()
+    for command, code in payload.items():
+        if command not in COMMANDS:
+            raise ConfigError(f"unknown command {command!r} in bindings")
+        if code is None:
+            continue
+        if not isinstance(code, str):
+            raise ConfigError(f"key for {command!r} must be a string or null")
+        identity = CODES.get(code)
+        if identity is None or identity in taken:
+            unsupported.append(command)
+            continue
+        taken.add(identity)
+        bindings[command] = KeyBinding(scan_code=identity[0], is_keypad=identity[1])
+        codes[command] = code
+    return ResolvedCodes(bindings=bindings, codes=codes, unsupported=unsupported)
 
 
 def _resolve_bindings(names: dict[str, str]) -> dict[str, KeyBinding]:

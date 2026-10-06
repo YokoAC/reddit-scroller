@@ -181,3 +181,29 @@ def test_a_ramping_key_still_clears_on_release():
     hk.handle_event(event(78, "up"))
     hk.handle_event(event(78, "down"))
     assert fired == ["faster", "faster"]
+
+
+def test_new_bindings_replace_the_old_ones():
+    from reddit_scroller.config import resolve_codes
+
+    hk, fired = listener()
+    hk.set_bindings(resolve_codes({"toggle": "Space", "next": "ArrowDown"}).bindings)
+    # Numpad 0 was toggle; it is nothing now.
+    assert hk.handle_press(key(82)) is None
+    assert hk.handle_press(key(57, is_keypad=False)) == "toggle"
+    # The arrow and numpad 2 share scan code 80; only the arrow is bound.
+    assert hk.handle_press(key(80, is_keypad=False)) == "next"
+    assert hk.handle_press(key(80)) is None
+    assert fired == ["toggle", "next"]
+
+
+def test_rebinding_forgets_which_keys_were_held():
+    # A key held across the change must not stay "held" forever under a
+    # command that no longer exists for it.
+    from reddit_scroller.config import resolve_codes
+
+    hk, fired = listener()
+    hk.handle_press(key(82))
+    hk.set_bindings(resolve_codes({"toggle": "Numpad0"}).bindings)
+    hk.handle_press(key(82))
+    assert fired == ["toggle", "toggle"]

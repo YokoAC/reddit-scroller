@@ -206,6 +206,27 @@ A bound key loses its page default and never reaches Reddit's own shortcuts:
 the listener runs in the capture phase on `window` and stops the event. On
 standby it does neither, since "leave the page alone" includes its keys.
 
+### Speed: steps for the keys, any value by hand
+
+The slowest speed is 5 px/s, down from 15, which was too fast on a tall
+monitor. The engine carries fractions of a pixel between frames, so a slow
+speed is just fewer whole pixels per second.
+
+The speed keys move to the next multiple of the step rather than adding it.
+Adding broke once the minimum stopped being a multiple of 15: down from 15
+landed on 5, and back up gave 20, 35, 50 — the default of 90 was unreachable.
+
+Clicking the speed on the HUD turns it into a field for an exact value, from 1
+to the maximum. The limits bound the keys, not a number typed on purpose, so a
+typed 3 survives a daemon reconnect; the next key press moves back onto the
+steps. This is the HUD's second clickable spot, after the gear.
+
+While that field is open, and for half a second after, commands from the daemon
+are ignored. Its hook is global and suppresses nothing, so digits typed on the
+numpad arrive as commands too — `5` would reverse, `1` would switch the script
+off — and the Enter that confirms the value would arrive, a moment later, as
+"open this post".
+
 ### One file, one version, one identity
 
 The bundle in `userscript/dist/` is committed, and it is what people install.

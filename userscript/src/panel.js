@@ -83,14 +83,11 @@ export class BindingsPanel {
    * The panel holds no bindings itself: it reads them through `getBindings`
    * and reports changes through `onAssign` and `onPreset`.
    */
-  constructor(
-    doc,
-    { rows, getBindings, isDaemonConnected, onAssign, onPreset, anchor },
-  ) {
+  constructor(doc, { rows, getBindings, getNote, onAssign, onPreset, anchor }) {
     this._doc = doc;
     this._rows = rows;
     this._getBindings = getBindings;
-    this._isDaemonConnected = isDaemonConnected;
+    this._getNote = getNote;
     this._onAssign = onAssign;
     this._onPreset = onPreset;
     this._anchor = anchor;
@@ -184,10 +181,9 @@ export class BindingsPanel {
 
     const note = this._doc.createElement("p");
     note.className = "rs-bindings-note";
-    note.textContent =
-      "The daemon is connected, so the keys in its config.json are active. " +
-      "These apply when it is not running.";
-    note.hidden = !this._isDaemonConnected();
+    const text = this._getNote?.() ?? null;
+    note.textContent = text ?? "";
+    note.hidden = text === null;
     root.append(head, note);
 
     for (const [command, description] of this._rows) {

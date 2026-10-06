@@ -261,6 +261,44 @@ describe("Transport", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("posts bindings as JSON and returns the daemon's answer", async () => {
+    const h = harness({
+      responses: [ok({ ok: true, unsupported: ["open"] })],
+    });
+    const result = await h.transport.postBindings({ toggle: "Space" });
+    expect(h.calls[0]).toMatchObject({
+      method: "POST",
+      url: "http://127.0.0.1:8765/bindings",
+      body: JSON.stringify({ bindings: { toggle: "Space" } }),
+    });
+    expect(result).toEqual({ ok: true, unsupported: ["open"] });
+  });
+
+  it("reports a daemon that has no such endpoint, or refuses", async () => {
+    for (const status of [404, 403]) {
+      const h = harness({
+        responses: [{ status, text: '{"ok":false,"error":"no"}' }],
+      });
+      expect(await h.transport.postBindings({})).toEqual({
+        ok: false,
+        unsupported: [],
+      });
+    }
+  });
+
+  it("reports a failed or garbled request the same way", async () => {
+    const failing = harness({
+      responses: [
+        () => {
+          throw new Error("down");
+        },
+      ],
+    });
+    expect((await failing.transport.postBindings({})).ok).toBe(false);
+    const garbled = harness({ responses: [{ status: 200, text: "<html>" }] });
+    expect((await garbled.transport.postBindings({})).ok).toBe(false);
+  });
+
   it("stops polling once stopped", async () => {
     const h = harness({
       responses: [

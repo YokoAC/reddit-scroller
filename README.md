@@ -199,8 +199,13 @@ Click the gear on the HUD, or *Key bindings* in your userscript manager's menu.
 Bindings are kept per browser. A bound key stops doing what it normally does on
 Reddit, except while you type in a text field or hold Ctrl, Alt or Meta.
 
-With the daemon connected, the keys in its `config.json` apply instead; those are
-numpad-only for now.
+**The daemon uses the same keys.** The page sends them when it connects, so they
+also work while another application has focus. Keys set in `config.json` stay in
+effect until you first change one in the panel.
+
+Be careful what you bind with the daemon running: it listens everywhere and
+swallows nothing, so a bound `F` fires on every `f` you type in any program. The
+one exception is a text field on Reddit itself, where the keys are left alone.
 
 Nothing is suppressed: whatever has focus still receives every key.
 
@@ -218,8 +223,9 @@ you leave out keeps its default.
 | `focus_line` | `0.25` | Where the "current post" line sits, as a fraction of screen height. |
 | `bindings` | see above | Command → key name. |
 
-`bindings` here are the daemon's global hotkeys. For the page's own keys, see
-[Changing the keys](#changing-the-keys).
+`bindings` are the daemon's keys until you change one in the panel; from then on
+[the panel's keys](#changing-the-keys) apply to both. `config.json` accepts numpad
+names only; the panel accepts any key.
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to

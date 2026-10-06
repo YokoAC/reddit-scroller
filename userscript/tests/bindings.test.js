@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   assign,
   commandFor,
+  fromCodes,
   fromPreset,
   labelFor,
   labelsOf,
   PRESETS,
   parseStored,
+  toCodes,
 } from "../src/bindings.js";
 import { commandForKeyCode, DEFAULT_BINDINGS } from "../src/commands.js";
 
@@ -129,6 +131,39 @@ describe("assign", () => {
     const copy = structuredClone(start);
     assign(start, "toggle", "Space");
     expect(start).toEqual(copy);
+  });
+});
+
+describe("talking to the daemon", () => {
+  it("sends each command's key code, and null for an unbound one", () => {
+    const bindings = assign(fromPreset("numpad"), "toggle", "NumpadEnter");
+    const codes = toCodes(bindings);
+    expect(codes.toggle).toBe("NumpadEnter");
+    expect(codes.open).toBeNull();
+    expect(codes.faster).toBe("NumpadAdd");
+    expect(Object.keys(codes).sort()).toEqual(COMMANDS);
+  });
+
+  it("reads the daemon's keys back into bindings with labels", () => {
+    const bindings = fromCodes({ toggle: "Numpad9", faster: "KeyF" });
+    expect(bindings.toggle).toEqual({ code: "Numpad9", label: "Num 9" });
+    expect(bindings.faster).toEqual({ code: "KeyF", label: "F" });
+    // What the daemon does not mention is unbound there, so unbound here.
+    expect(bindings.open).toBeNull();
+    expect(Object.keys(bindings).sort()).toEqual(COMMANDS);
+  });
+
+  it("round-trips", () => {
+    const laptop = fromPreset("laptop");
+    expect(fromCodes(toCodes(laptop))).toEqual(laptop);
+  });
+
+  it("survives a daemon that reports nonsense", () => {
+    for (const junk of [null, "x", 7, { toggle: 5, nonsense: "KeyQ" }]) {
+      const bindings = fromCodes(junk);
+      expect(Object.keys(bindings).sort()).toEqual(COMMANDS);
+      expect(bindings.toggle).toBeNull();
+    }
   });
 });
 

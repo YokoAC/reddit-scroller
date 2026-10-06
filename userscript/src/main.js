@@ -3,9 +3,11 @@
 import {
   assign,
   commandFor,
+  fromCodes,
   fromPreset,
   labelsOf,
   parseStored,
+  toCodes,
 } from "./bindings.js";
 import { detectMode, resolveAction } from "./commands.js";
 import { stepGallery } from "./gallery.js";
@@ -131,12 +133,15 @@ function saveStandby(value) {
 }
 
 // Not seeded like the port: the panel is the way to change these, so the raw
-// value does not need to be discoverable in the manager.
+// value does not need to be discoverable in the manager. `customised` says
+// whether the user ever changed a key; until then the daemon keeps its own.
 function loadBindings() {
   try {
-    return parseStored(GM_getValue(BINDINGS_KEY));
+    const stored = GM_getValue(BINDINGS_KEY);
+    const customised = stored !== undefined && stored !== null && stored !== "";
+    return { bindings: parseStored(stored), customised };
   } catch {
-    return fromPreset("numpad");
+    return { bindings: fromPreset("numpad"), customised: false };
   }
 }
 
@@ -184,7 +189,15 @@ function boot() {
 
   let mode = detectMode(window.location.pathname);
   let standby = loadStandby();
-  let bindings = loadBindings();
+  let { bindings, customised } = loadBindings();
+  // Whose keys the connected daemon is listening for:
+  //   "panel"  - ours; it accepted them.
+  //   "config" - its config.json's, which we show because we have none stored.
+  //   "legacy" - its own, unknown to us: it predates POST /bindings or refused.
+  //   null     - not connected, or not settled yet.
+  let keySync = null;
+  // Commands whose key the daemon cannot hook. The page handles those itself.
+  let pageOnly = [];
   let daemonConnected = false;
   let helpVisible = false;
   let helpTimer = null;
@@ -204,9 +217,9 @@ function boot() {
       postCount: selection.count,
       daemonConnected,
       lastCommand,
-      // Whichever side is handling keys right now: the daemon's config, or
-      // the page's own bindings.
-      bindings: daemonConnected ? settings.bindings : labelsOf(bindings),
+      // The keys in effect. Only a daemon that keeps its own, unknown to us,
+      // is described by what it reported instead.
+      bindings: keySync === "legacy" ? settings.bindings : labelsOf(bindings),
       helpVisible,
       standby,
     };
@@ -374,10 +387,17 @@ function boot() {
       // hook does not know about focus, so it still sends them as commands.
       // The page's own keys need no such check: a focused field gets them.
       if (hud.editing) return;
+      // The same goes for a text field in the page: with Backspace bound to
+      // "back", deleting a character would navigate away from a comment
+      // draft. Only while the page has focus, though: a field stays the
+      // active element after alt-tabbing away, and the keys must keep working
+      // then -- that is what the daemon is for.
+      if (document.hasFocus() && isTyping(activeElement())) return;
       commands.forEach(handleCommand);
     },
     onConnectionChange: (ok) => {
       daemonConnected = ok;
+      if (!ok) keySync = null;
       if (ok && transport.settings) {
         Object.assign(settings, transport.settings);
         // Both were built from built-in defaults; adopt the user's config.
@@ -399,6 +419,9 @@ function boot() {
       // post is current, so the selection has to be recomputed rather than
       // merely redrawn. paint() alone left the old selection standing until
       // the next scroll happened to correct it.
+      // After the settings above: with nothing stored, the keys shown are
+      // the ones the daemon just reported.
+      if (ok) syncKeys();
       refresh();
       panel.render();
     },
@@ -406,14 +429,62 @@ function boot() {
 
   function setBindings(next) {
     bindings = next;
+    customised = true;
     saveBindings(bindings);
     paint();
+    syncKeys();
+  }
+
+  /** Settle whose keys the daemon listens for. Run on connect and on change. */
+  async function syncKeys() {
+    if (!daemonConnected) return;
+    if (customised) {
+      const result = await transport.postBindings(toCodes(bindings));
+      if (!daemonConnected) return;
+      keySync = result.ok ? "panel" : "legacy";
+      pageOnly = result.unsupported;
+    } else if (settings.binding_codes) {
+      // Nothing of ours to send: config.json's keys stand, and we show them.
+      bindings = fromCodes(settings.binding_codes);
+      keySync = "config";
+      pageOnly = [];
+    } else {
+      keySync = "legacy";
+      pageOnly = [];
+    }
+    // refresh(), not paint(): on connect this runs before the selection has
+    // been recomputed for the daemon's focus line, and the two belong in the
+    // same frame.
+    refresh();
+    panel.render();
+  }
+
+  function bindingsNote() {
+    if (keySync === "legacy") {
+      return (
+        "The daemon is using the keys in its config.json. " +
+        "These apply when it is not running."
+      );
+    }
+    if (keySync === "config") {
+      return (
+        "These are the keys from the daemon's config.json. " +
+        "Change one here and this panel takes over."
+      );
+    }
+    if (keySync === "panel" && pageOnly.length) {
+      const names = HELP_ORDER.filter(([command]) => pageOnly.includes(command))
+        .map(([, description]) => description)
+        .join(", ");
+      return `The daemon cannot listen for the key set for: ${names}. It works while the browser has focus.`;
+    }
+    return null;
   }
 
   const panel = new BindingsPanel(document, {
     rows: HELP_ORDER,
     getBindings: () => bindings,
-    isDaemonConnected: () => daemonConnected,
+    getNote: bindingsNote,
     onAssign: (command, code, key) =>
       setBindings(assign(bindings, command, code, key)),
     onPreset: (name) => setBindings(fromPreset(name)),
@@ -439,6 +510,15 @@ function boot() {
     return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
   }
 
+  /** The focused element, looking through open shadow roots for it. */
+  function activeElement() {
+    let element = document.activeElement;
+    while (element?.shadowRoot?.activeElement) {
+      element = element.shadowRoot.activeElement;
+    }
+    return element;
+  }
+
   window.addEventListener("scroll", refresh, { passive: true });
   // Capture phase, on window: a bound key is stopped before Reddit's own
   // shortcuts or the page default (Space scrolling, say) can act on it.
@@ -446,19 +526,25 @@ function boot() {
     "keydown",
     (event) => {
       if (panel.handleKey(event)) return;
-      // Keys typed into Reddit's search box are text, not commands.
-      if (isTyping(event.target)) return;
-      // The daemon's hook is global and fires regardless of window focus, so
-      // when it is connected it already delivers this same keypress over the
-      // transport. The page's own bindings are for when it is not running.
-      if (daemonConnected) return;
+      // Keys typed into Reddit's search box are text, not commands. The
+      // composed path, because Reddit's fields sit inside shadow roots and
+      // the event's target, seen from here, is only their host.
+      if (isTyping(event.composedPath?.()[0] ?? event.target)) return;
       // Binding F must not cost the user Ctrl+F.
       if (event.ctrlKey || event.altKey || event.metaKey) return;
       const command = commandFor(bindings, event.code);
       // On standby the page gets its keys back, apart from the way out.
       if (!command || ignoredOnStandby(command)) return;
+      // A daemon keeping its own keys: ours mean nothing while it is
+      // connected, so the key is left entirely alone.
+      const synced = keySync === "panel" || keySync === "config";
+      if (daemonConnected && !synced) return;
       event.preventDefault();
       event.stopPropagation();
+      // The daemon's hook fires regardless of focus, so it already delivers
+      // this press as a command; acting here too would run it twice. Unless
+      // this is a key it cannot hook.
+      if (daemonConnected && !pageOnly.includes(command)) return;
       handleCommand(command);
     },
     true,

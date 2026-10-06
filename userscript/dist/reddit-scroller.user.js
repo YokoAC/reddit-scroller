@@ -647,11 +647,17 @@
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
+/* A bare icon, like the gear that opens the panel. */
 #${PANEL_ID} button[data-close] {
-  padding: 0 8px;
-  font-size: 20px;
-  line-height: 1.3;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.6;
 }
+#${PANEL_ID} button[data-close]:hover,
+#${PANEL_ID} button[data-close]:focus-visible { opacity: 1; }
 `;
   var MODIFIER = /^(Shift|Control|Alt|Meta|OS)/;
   var BindingsPanel = class {

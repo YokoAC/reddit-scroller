@@ -39,7 +39,8 @@ Two halves:
 3. Open `https://www.reddit.com`. The HUD appears bottom-right.
 
 That is the whole install, and it is already usable: the numpad scrolls the
-feed whenever the browser has focus. No Python, no Node.
+feed whenever the browser has focus. No Python, no Node. No numpad either?
+[Change the keys](#changing-the-keys).
 
 It updates itself from then on.
 
@@ -114,8 +115,8 @@ small command-line client would do the same job without hooking anything.
 
 The HUD names which of the two is driving. **`● daemon`** in green means the
 daemon is; **`● browser only`** in amber means the page is, and that the hotkey
-panel is showing built-in defaults rather than your `config.json`. Amber, not
-red: nothing is broken in that state.
+panel is showing the page's own bindings rather than your `config.json`. Amber,
+not red: nothing is broken in that state.
 
 ## Browser support
 
@@ -178,10 +179,25 @@ The selected post is outlined in blue and named in the HUD. While auto-scrolling
 follows whatever sits a quarter of the way down the screen; pressing `8` or `2` pins
 your choice until it scrolls off.
 
-The hotkey panel lists your *actual* bindings, read from the daemon — so it stays
-correct if you rebind anything. With the daemon down it falls back to the defaults,
-which are the keys the in-page handler uses anyway. It also appears by itself for six
-seconds when a page loads.
+The hotkey panel lists your *actual* bindings: the daemon's while it is connected,
+the page's own otherwise. It also appears by itself for six seconds when a page loads.
+
+### Changing the keys
+
+Click the gear on the HUD, or *Key bindings* in your userscript manager's menu.
+
+- **Laptop** is a preset for keyboards without a numpad: Space pauses, the arrows
+  pick posts and gallery images, Enter and Backspace open and go back, `F` / `S`
+  change speed, `R` reverses, `H` shows the keys, `O` switches the script off.
+- **To change one key**, click its row and press the new key. A key already in use
+  moves over.
+- **Numpad (default)** puts everything back.
+
+Bindings are kept per browser. A bound key stops doing what it normally does on
+Reddit, except while you type in a text field or hold Ctrl, Alt or Meta.
+
+With the daemon connected, the keys in its `config.json` apply instead; those are
+numpad-only for now.
 
 Nothing is suppressed: whatever has focus still receives every key.
 
@@ -198,6 +214,9 @@ you leave out keeps its default.
 | `speed_min` / `speed_max` | `15` / `600` | Speed limits. |
 | `focus_line` | `0.25` | Where the "current post" line sits, as a fraction of screen height. |
 | `bindings` | see above | Command → key name. |
+
+`bindings` here are the daemon's global hotkeys. For the page's own keys, see
+[Changing the keys](#changing-the-keys).
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to

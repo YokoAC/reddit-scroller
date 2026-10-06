@@ -1,8 +1,16 @@
 /** Entry point: wires the transport, scroll engine, selection and HUD together. */
 
-import { commandForKeyCode, detectMode, resolveAction } from "./commands.js";
+import {
+  assign,
+  commandFor,
+  fromPreset,
+  labelsOf,
+  parseStored,
+} from "./bindings.js";
+import { detectMode, resolveAction } from "./commands.js";
 import { stepGallery } from "./gallery.js";
-import { Hud } from "./hud.js";
+import { HELP_ORDER, HUD_ID, Hud } from "./hud.js";
+import { BindingsPanel } from "./panel.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
 import {
@@ -14,6 +22,7 @@ import {
 
 const PORT_KEY = "rs-port";
 const STANDBY_KEY = "rs-standby";
+const BINDINGS_KEY = "rs-bindings";
 const STATE_KEY = "rs-scroll-state";
 const FLASH_MS = 900;
 const HELP_AUTOSHOW_MS = 6000;
@@ -95,6 +104,24 @@ function saveStandby(value) {
   }
 }
 
+// Not seeded like the port: the panel is the way to change these, so the raw
+// value does not need to be discoverable in the manager.
+function loadBindings() {
+  try {
+    return parseStored(GM_getValue(BINDINGS_KEY));
+  } catch {
+    return fromPreset("numpad");
+  }
+}
+
+function saveBindings(bindings) {
+  try {
+    GM_setValue(BINDINGS_KEY, bindings);
+  } catch {
+    // They still apply until the page is closed.
+  }
+}
+
 function boot() {
   const settings = { ...DEFAULTS };
   const persisted = loadPersisted();
@@ -118,11 +145,12 @@ function boot() {
     focusLine: settings.focus_line,
   });
 
-  const hud = new Hud(document);
+  const hud = new Hud(document, { onSettings: () => toggleBindings() });
   hud.mount();
 
   let mode = detectMode(window.location.pathname);
   let standby = loadStandby();
+  let bindings = loadBindings();
   let daemonConnected = false;
   let helpVisible = false;
   let helpTimer = null;
@@ -142,7 +170,9 @@ function boot() {
       postCount: selection.count,
       daemonConnected,
       lastCommand,
-      bindings: settings.bindings,
+      // Whichever side is handling keys right now: the daemon's config, or
+      // the page's own bindings.
+      bindings: daemonConnected ? settings.bindings : labelsOf(bindings),
       helpVisible,
       standby,
     };
@@ -266,8 +296,11 @@ function boot() {
   // The one gate both input paths pass through: the daemon's transport and
   // the in-page keydown fallback both arrive here. Dormant ignores everything
   // that touches the page; standby wakes it, and help only draws a panel.
+  const ignoredOnStandby = (command) =>
+    standby && command !== "standby" && command !== "help";
+
   function handleCommand(command) {
-    if (standby && command !== "standby" && command !== "help") return;
+    if (ignoredOnStandby(command)) return;
     flash(command);
     (ACTIONS[resolveAction(command, mode)] || ACTIONS.noop)();
     refresh();
@@ -321,8 +354,38 @@ function boot() {
       // merely redrawn. paint() alone left the old selection standing until
       // the next scroll happened to correct it.
       refresh();
+      panel.render();
     },
   });
+
+  function setBindings(next) {
+    bindings = next;
+    saveBindings(bindings);
+    paint();
+  }
+
+  const panel = new BindingsPanel(document, {
+    rows: HELP_ORDER,
+    getBindings: () => bindings,
+    isDaemonConnected: () => daemonConnected,
+    onAssign: (command, code, key) =>
+      setBindings(assign(bindings, command, code, key)),
+    onPreset: (name) => setBindings(fromPreset(name)),
+    anchor: () => document.getElementById(HUD_ID),
+  });
+
+  function toggleBindings() {
+    // The HUD's key list shows the same keys, and open it leaves the panel
+    // no room above. Closed first, so the panel measures the shorter HUD.
+    if (!panel.open) showHelp(false);
+    panel.toggle();
+  }
+
+  try {
+    GM_registerMenuCommand("Key bindings", toggleBindings);
+  } catch {
+    // The gear on the HUD opens it too.
+  }
 
   function isTyping(target) {
     if (!target) return false;
@@ -331,17 +394,29 @@ function boot() {
   }
 
   window.addEventListener("scroll", refresh, { passive: true });
-  window.addEventListener("keydown", (event) => {
-    // Numpad keys typed into Reddit's search box are text, not commands.
-    if (isTyping(event.target)) return;
-    // The daemon's hook is global and fires regardless of window focus, so
-    // when it is connected it already delivers this same keypress over the
-    // transport. This in-page fallback exists only to make the script
-    // usable (and testable) without the daemon running.
-    if (daemonConnected) return;
-    const command = commandForKeyCode(event.code);
-    if (command) handleCommand(command);
-  });
+  // Capture phase, on window: a bound key is stopped before Reddit's own
+  // shortcuts or the page default (Space scrolling, say) can act on it.
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      if (panel.handleKey(event)) return;
+      // Keys typed into Reddit's search box are text, not commands.
+      if (isTyping(event.target)) return;
+      // The daemon's hook is global and fires regardless of window focus, so
+      // when it is connected it already delivers this same keypress over the
+      // transport. The page's own bindings are for when it is not running.
+      if (daemonConnected) return;
+      // Binding F must not cost the user Ctrl+F.
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+      const command = commandFor(bindings, event.code);
+      // On standby the page gets its keys back, apart from the way out.
+      if (!command || ignoredOnStandby(command)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleCommand(command);
+    },
+    true,
+  );
   window.addEventListener("popstate", refresh);
   window.addEventListener("pagehide", saveSpeed);
 

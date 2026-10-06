@@ -178,6 +178,34 @@ The target is the selected post in the feed and the post itself in a thread.
 At either end Reddit marks the button `aria-disabled="true"`, and the key does
 nothing.
 
+### Rebinding, in the page first
+
+The defaults are numpad keys, and a keyboard without a numpad could not use the
+script at all: `config.json` accepts only numpad names, and the page's own key
+map was compiled into the bundle.
+
+A bindings panel now rebinds the page's keys. It opens from the userscript
+manager's menu and from a gear on the HUD, because it must not depend on a key
+the user may not have. The gear is the HUD's only clickable element; the rest
+stays click-through. Bindings live in GM storage (`rs-bindings`) and persist
+until reset.
+
+This covers the page only, on purpose. Any key is safe to bind there: the page
+handles keys only while it has focus, never while a text field does, and never
+with Ctrl, Alt or Meta held — so binding `F` leaves Ctrl+F alone. The daemon is
+the opposite case. Its hook is global and suppresses nothing, so a bare `F`
+bound there would fire in every application; it needs modifier combinations
+first. Until then the daemon's `config.json` wins while it is connected, and
+the panel says so.
+
+Keys are matched by `KeyboardEvent.code`, the physical position, as the numpad
+keys always were, so a layout switch does not move a binding. The label shown
+is the character the user pressed when binding it.
+
+A bound key loses its page default and never reaches Reddit's own shortcuts:
+the listener runs in the capture phase on `window` and stops the event. On
+standby it does neither, since "leave the page alone" includes its keys.
+
 ### One file, one version, one identity
 
 The bundle in `userscript/dist/` is committed, and it is what people install.

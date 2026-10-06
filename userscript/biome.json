@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   "files": {
     "includes": ["src/**/*.js", "tests/**/*.js", "*.mjs", "*.js"]
   },
@@ -24,6 +24,11 @@
       "trailingCommas": "all",
       "semicolons": "always"
     },
-    "globals": ["GM_xmlhttpRequest", "GM_setValue", "GM_getValue"]
+    "globals": [
+      "GM_xmlhttpRequest",
+      "GM_setValue",
+      "GM_getValue",
+      "GM_registerMenuCommand"
+    ]
   }
 }

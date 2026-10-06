@@ -14,6 +14,7 @@
       .mono { font-family: "Cascadia Mono", Consolas, monospace; }
       .status { font-size: 17px; font-weight: 700; letter-spacing: 0.04em; fill: #56d364; }
       .daemon { font-size: 14px; fill: #56d364; }
+      .gear   { font-size: 15px; fill: #f2f2f2; opacity: 0.6; }
       .speed  { font-size: 17px; font-weight: 500; fill: #f2f2f2; }
       .bar    { font-size: 17px; letter-spacing: 1px; fill: #58a6ff; }
       .mode   { font-size: 14px; fill: #f2f2f2; opacity: 0.65; letter-spacing: 0.08em; }
@@ -30,7 +31,8 @@
 
   <!-- state -->
   <text class="ui status" x="32" y="53">SCROLLING</text>
-  <text class="ui daemon" x="320" y="53" text-anchor="end">&#9679; daemon</text>
+  <text class="ui daemon" x="298" y="53" text-anchor="end">&#9679; daemon</text>
+  <text class="ui gear" x="320" y="53" text-anchor="end">&#9881;</text>
 
   <line class="rule" x1="32" y1="67" x2="320" y2="67"/>
 
@@ -69,7 +71,7 @@
     <text class="mono hkey" x="32" y="385">Num .</text>
     <text class="ui hact"  x="112" y="385">back to the feed</text>
     <text class="mono hkey" x="32" y="404">Num *</text>
-    <text class="ui hact"  x="112" y="404">show or hide this panel</text>
+    <text class="ui hact"  x="112" y="404">show or hide the key list</text>
     <text class="mono hkey" x="32" y="423">Num 1</text>
     <text class="ui hact"  x="112" y="423">switch the script off / on</text>
   </g>

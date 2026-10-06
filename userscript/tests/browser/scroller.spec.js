@@ -263,6 +263,50 @@ test.describe("without a daemon", () => {
   // The in-page handler is the only thing that works when the daemon is down,
   // and it is keyed on KeyboardEvent.code -- exactly the sort of thing that
   // could differ between engines. It does not, and this is what says so.
+  // The gear is a clickable child of a panel that lets every other click
+  // through, and the key it binds has to be stopped before the page sees it.
+  // Both are things only an engine can confirm.
+  test("rebinds a key from the gear and uses it", async ({
+    page,
+  }, testInfo) => {
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    await expect(page.locator("#rs-hud .rs-daemon")).toHaveText(
+      "\u25cf browser only",
+    );
+
+    await page.locator("#rs-hud .rs-gear").click();
+    await page.locator('#rs-bindings button[data-command="toggle"]').click();
+    await page.keyboard.press("Space");
+    await expect(
+      page.locator('#rs-bindings button[data-command="toggle"]'),
+    ).toHaveText("Space");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#rs-bindings")).toHaveCount(0);
+
+    // Space would scroll the page by a screen; bound, it must only toggle.
+    await page.locator("body").press("Space");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("SCROLLING");
+    await page.locator("body").press("Space");
+    await expect(page.locator("#rs-hud .rs-status")).toHaveText("PAUSED");
+    expect(await page.evaluate(() => window.scrollY)).toBeLessThan(200);
+  });
+
+  test("keeps the bindings panel on screen above the HUD in a short window", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1100, height: 520 });
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    await page.locator("#rs-hud .rs-gear").click();
+
+    const panel = await page.locator("#rs-bindings").boundingBox();
+    const hud = await page.locator("#rs-hud").boundingBox();
+    // Its padding once pushed the top edge off the screen.
+    expect(panel.y).toBeGreaterThanOrEqual(0);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(hud.y);
+  });
+
   test("still responds to the numpad keys", async ({ page }, testInfo) => {
     // A port nothing is listening on: the transport must fail and stay out of
     // the way rather than swallowing the keys.

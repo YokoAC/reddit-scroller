@@ -34,6 +34,7 @@ const BANNER = `// ==UserScript==
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // @connect      127.0.0.1
 // @run-at       document-idle
 // @noframes

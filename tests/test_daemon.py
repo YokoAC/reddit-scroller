@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import replace
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import aiohttp
 import pytest
@@ -14,13 +14,17 @@ from reddit_scroller.config import Config
 class FakeListener:
     """Stands in for the real keyboard hook — no OS hook is installed."""
 
-    instances: ClassVar[list["FakeListener"]] = []
+    # Any: a test may register the real listener here for started() to find.
+    instances: ClassVar[list[Any]] = []
 
     def __init__(self, config, on_command):
         self.config = config
         self.on_command = on_command
         self.started = False
         FakeListener.instances.append(self)
+
+    def set_bindings(self, bindings):
+        self.bindings = dict(bindings)
 
     def start(self):
         self.started = True
@@ -181,3 +185,55 @@ def test_main_exits_quietly_on_ctrl_c(monkeypatch):
 
     monkeypatch.setattr(daemon, "run", interrupted)
     assert daemon.main() == 0
+
+
+async def test_keys_sent_by_the_userscript_reach_the_real_listener():
+    """The whole path: POST /bindings, then a press of the new key becomes a
+    command on /events, and the old key no longer does anything."""
+    from types import SimpleNamespace
+
+    from reddit_scroller.hotkeys import HotkeyListener
+
+    class UnhookedListener(HotkeyListener):
+        """The real listener, minus the one line that hooks the keyboard."""
+
+        instances: ClassVar[list["UnhookedListener"]] = []
+
+        def __init__(self, config, on_command):
+            super().__init__(config, on_command)
+            self.started = False
+            UnhookedListener.instances.append(self)
+            FakeListener.instances.append(self)
+
+        def start(self):
+            self.started = True
+
+        def stop(self):
+            self.started = False
+
+    def press(scan_code, is_keypad):
+        event = SimpleNamespace(
+            scan_code=scan_code, is_keypad=is_keypad, event_type="down"
+        )
+        UnhookedListener.instances[0].handle_event(event)
+
+    config = replace(Config.default(), port=8796)
+    task = asyncio.create_task(run(config, listener_factory=UnhookedListener))
+    try:
+        await started(task)
+        async with aiohttp.ClientSession() as session:
+            base = "http://127.0.0.1:8796"
+            async with session.post(
+                f"{base}/bindings", json={"bindings": {"toggle": "Space"}}
+            ) as resp:
+                assert await resp.json() == {"ok": True, "unsupported": []}
+
+            press(82, True)  # numpad 0: toggle before, nothing now
+            press(57, False)  # Space
+            async with session.get(f"{base}/events?cursor=0") as resp:
+                body = await resp.json()
+            assert [e["command"] for e in body["events"]] == ["toggle"]
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task

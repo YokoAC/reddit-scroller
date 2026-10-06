@@ -146,3 +146,117 @@ async def test_a_fresh_client_starting_from_health_gets_no_backlog(client, bus):
     bus.append("toggle")
     body = await (await client.get("/events", params={"cursor": str(cursor)})).json()
     assert [e["command"] for e in body["events"]] == ["toggle"]
+
+
+# --- POST /bindings -------------------------------------------------------
+
+
+@pytest.fixture
+def received():
+    return []
+
+
+@pytest.fixture
+async def rebinding_client(aiohttp_client, bus, received):
+    app = create_app(
+        bus,
+        Config.default().browser_settings(),
+        poll_timeout=0.05,
+        on_bindings=received.append,
+    )
+    return await aiohttp_client(app)
+
+
+LAPTOP = {"bindings": {"toggle": "Space", "next": "ArrowDown", "open": None}}
+
+
+async def test_bindings_from_the_userscript_are_applied(rebinding_client, received):
+    resp = await rebinding_client.post("/bindings", json=LAPTOP)
+    assert resp.status == 200
+    assert await resp.json() == {"ok": True, "unsupported": []}
+    assert len(received) == 1
+    assert set(received[0]) == {"toggle", "next"}
+    assert received[0]["toggle"].scan_code == 57
+
+
+async def test_health_reports_the_keys_now_in_effect(rebinding_client):
+    await rebinding_client.post("/bindings", json=LAPTOP)
+    settings = (await (await rebinding_client.get("/health")).json())["settings"]
+    assert settings["binding_codes"] == {"toggle": "Space", "next": "ArrowDown"}
+    # The older field stays, for a userscript that predates binding_codes.
+    assert settings["bindings"] == {"toggle": "Space", "next": "ArrowDown"}
+
+
+async def test_a_key_the_hook_cannot_use_is_reported(rebinding_client, received):
+    resp = await rebinding_client.post(
+        "/bindings", json={"bindings": {"toggle": "Space", "open": "MediaStop"}}
+    )
+    assert (await resp.json())["unsupported"] == ["open"]
+    assert set(received[0]) == {"toggle"}
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://www.reddit.com", "http://evil.example", "null"],
+)
+async def test_a_web_page_cannot_set_the_keys(rebinding_client, received, origin):
+    # A page can reach 127.0.0.1, but the browser names it in Origin and page
+    # script cannot remove or forge that header.
+    resp = await rebinding_client.post(
+        "/bindings", json=LAPTOP, headers={"Origin": origin}
+    )
+    assert resp.status == 403
+    assert received == []
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["moz-extension://0a1b2c", "chrome-extension://abcdef", "safari-web-extension://x"],
+)
+async def test_a_userscript_manager_may(rebinding_client, received, origin):
+    resp = await rebinding_client.post(
+        "/bindings", json=LAPTOP, headers={"Origin": origin}
+    )
+    assert resp.status == 200
+    assert len(received) == 1
+
+
+async def test_a_rebound_host_name_is_refused(rebinding_client, received):
+    # DNS rebinding: a hostile name resolving to 127.0.0.1 makes the request
+    # same-origin for the page, but Host still carries that name.
+    resp = await rebinding_client.post(
+        "/bindings", json=LAPTOP, headers={"Host": "evil.example:8765"}
+    )
+    assert resp.status == 403
+    assert received == []
+
+
+async def test_a_body_not_declared_as_json_is_refused(rebinding_client, received):
+    # The content types a plain HTML form can send skip the CORS preflight.
+    import json as jsonlib
+
+    resp = await rebinding_client.post(
+        "/bindings",
+        data=jsonlib.dumps(LAPTOP),
+        headers={"Content-Type": "text/plain"},
+    )
+    assert resp.status == 403
+    assert received == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    ["not json", "[]", '{"bindings": []}', '{"bindings": {"nonsense": "Space"}}', "{}"],
+)
+async def test_a_malformed_request_is_a_400(rebinding_client, received, body):
+    resp = await rebinding_client.post(
+        "/bindings", data=body, headers={"Content-Type": "application/json"}
+    )
+    assert resp.status == 400
+    assert (await resp.json())["ok"] is False
+    assert received == []
+
+
+async def test_without_a_listener_to_apply_them_it_says_so(client):
+    resp = await client.post("/bindings", json=LAPTOP)
+    assert resp.status == 503

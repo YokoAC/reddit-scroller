@@ -12,7 +12,7 @@ from typing import Any
 from aiohttp import web
 
 from .bus import EventBus
-from .config import Config, ConfigError, load_config
+from .config import Config, ConfigError, KeyBinding, load_config
 from .hotkeys import HotkeyListener
 from .server import create_app
 
@@ -40,6 +40,11 @@ def log(message: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {message}", flush=True)
 
 
+def log_bindings(bindings: dict[str, KeyBinding]) -> None:
+    for command, binding in sorted(bindings.items()):
+        log(f"  {command:<10} scan={binding.scan_code} keypad={binding.is_keypad}")
+
+
 async def run(
     config: Config,
     listener_factory: Callable[[Config, Callable[[str], None]], Any] = HotkeyListener,
@@ -51,7 +56,20 @@ async def run(
         log(f"hotkey  {command}")
         bus.append_threadsafe(command)
 
-    app = create_app(bus, config.browser_settings())
+    # The userscript may send its own keys. They are kept here, not in
+    # config.json: the page is the source of truth and re-sends on connect.
+    current = dict(config.bindings)
+    listeners: list[Any] = []
+
+    def on_bindings(bindings: dict[str, KeyBinding]) -> None:
+        current.clear()
+        current.update(bindings)
+        for active in listeners:
+            active.set_bindings(current)
+        log("keys set by the userscript")
+        log_bindings(current)
+
+    app = create_app(bus, config.browser_settings(), on_bindings=on_bindings)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", config.port)
@@ -64,11 +82,13 @@ async def run(
     # Only hook the keyboard once the port is ours — a failed start must not
     # leave a global hook installed.
     listener = listener_factory(config, on_command)
+    # A request can land between the port opening and this line.
+    listener.set_bindings(current)
+    listeners.append(listener)
     listener.start()
 
     log(f"listening on http://127.0.0.1:{config.port}")
-    for command, binding in sorted(config.bindings.items()):
-        log(f"  {command:<7} scan={binding.scan_code} keypad={binding.is_keypad}")
+    log_bindings(current)
     log("waiting for the userscript to connect (Ctrl+C to stop)")
 
     try:

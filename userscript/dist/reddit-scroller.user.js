@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.4
+// @version      0.1.5
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT
@@ -157,6 +157,23 @@
       result[command] = binding;
     }
     return result;
+  }
+  function toCodes(bindings) {
+    return Object.fromEntries(
+      COMMANDS.map((command) => [command, bindings[command]?.code ?? null])
+    );
+  }
+  function fromCodes(codes) {
+    const source = codes && typeof codes === "object" ? codes : {};
+    return Object.fromEntries(
+      COMMANDS.map((command) => {
+        const code = source[command];
+        return [
+          command,
+          typeof code === "string" ? { code, label: labelFor(code) } : null
+        ];
+      })
+    );
   }
   function assign(bindings, command, code, key) {
     const next = {};
@@ -723,11 +740,11 @@
      * The panel holds no bindings itself: it reads them through `getBindings`
      * and reports changes through `onAssign` and `onPreset`.
      */
-    constructor(doc, { rows, getBindings, isDaemonConnected, onAssign, onPreset, anchor }) {
+    constructor(doc, { rows, getBindings, getNote, onAssign, onPreset, anchor }) {
       this._doc = doc;
       this._rows = rows;
       this._getBindings = getBindings;
-      this._isDaemonConnected = isDaemonConnected;
+      this._getNote = getNote;
       this._onAssign = onAssign;
       this._onPreset = onPreset;
       this._anchor = anchor;
@@ -809,8 +826,9 @@
       head.append(title, close);
       const note = this._doc.createElement("p");
       note.className = "rs-bindings-note";
-      note.textContent = "The daemon is connected, so the keys in its config.json are active. These apply when it is not running.";
-      note.hidden = !this._isDaemonConnected();
+      const text = this._getNote?.() ?? null;
+      note.textContent = text ?? "";
+      note.hidden = text === null;
       root.append(head, note);
       for (const [command, description] of this._rows) {
         const row = this._doc.createElement("div");
@@ -1086,6 +1104,30 @@
       } catch {
       }
     }
+    /**
+     * Send the page's key bindings for the daemon to listen for. Never throws:
+     * `ok` is false for a daemon that is down, predates the endpoint, or
+     * refuses, and the caller then leaves the daemon to its own keys.
+     */
+    async postBindings(codes) {
+      const failed = { ok: false, unsupported: [] };
+      try {
+        const response = await this._request({
+          method: "POST",
+          url: `${this._base}/bindings`,
+          body: JSON.stringify({ bindings: codes })
+        });
+        if (response.status !== 200) return failed;
+        const body = JSON.parse(response.text);
+        if (body.ok !== true) return failed;
+        return {
+          ok: true,
+          unsupported: Array.isArray(body.unsupported) ? body.unsupported : []
+        };
+      } catch {
+        return failed;
+      }
+    }
     async _json(method, path) {
       const response = await this._request({
         method,
@@ -1181,9 +1223,11 @@
   }
   function loadBindings() {
     try {
-      return parseStored(GM_getValue(BINDINGS_KEY));
+      const stored = GM_getValue(BINDINGS_KEY);
+      const customised = stored !== void 0 && stored !== null && stored !== "";
+      return { bindings: parseStored(stored), customised };
     } catch {
-      return fromPreset("numpad");
+      return { bindings: fromPreset("numpad"), customised: false };
     }
   }
   function saveBindings(bindings) {
@@ -1224,7 +1268,9 @@
     hud.mount();
     let mode = detectMode(window.location.pathname);
     let standby = loadStandby();
-    let bindings = loadBindings();
+    let { bindings, customised } = loadBindings();
+    let keySync = null;
+    let pageOnly = [];
     let daemonConnected = false;
     let helpVisible = false;
     let helpTimer = null;
@@ -1243,9 +1289,9 @@
         postCount: selection.count,
         daemonConnected,
         lastCommand,
-        // Whichever side is handling keys right now: the daemon's config, or
-        // the page's own bindings.
-        bindings: daemonConnected ? settings.bindings : labelsOf(bindings),
+        // The keys in effect. Only a daemon that keeps its own, unknown to us,
+        // is described by what it reported instead.
+        bindings: keySync === "legacy" ? settings.bindings : labelsOf(bindings),
         helpVisible,
         standby
       };
@@ -1381,10 +1427,12 @@
       onCommands: (commands) => {
         if (document.hidden) return;
         if (hud.editing) return;
+        if (document.hasFocus() && isTyping(activeElement())) return;
         commands.forEach(handleCommand);
       },
       onConnectionChange: (ok) => {
         daemonConnected = ok;
+        if (!ok) keySync = null;
         if (ok && transport.settings) {
           Object.assign(settings, transport.settings);
           engine.setLimits(settings.speed_min, settings.speed_max);
@@ -1400,19 +1448,53 @@
             }, HELP_AUTOSHOW_MS);
           }
         }
+        if (ok) syncKeys();
         refresh();
         panel.render();
       }
     });
     function setBindings(next) {
       bindings = next;
+      customised = true;
       saveBindings(bindings);
       paint();
+      syncKeys();
+    }
+    async function syncKeys() {
+      if (!daemonConnected) return;
+      if (customised) {
+        const result = await transport.postBindings(toCodes(bindings));
+        if (!daemonConnected) return;
+        keySync = result.ok ? "panel" : "legacy";
+        pageOnly = result.unsupported;
+      } else if (settings.binding_codes) {
+        bindings = fromCodes(settings.binding_codes);
+        keySync = "config";
+        pageOnly = [];
+      } else {
+        keySync = "legacy";
+        pageOnly = [];
+      }
+      refresh();
+      panel.render();
+    }
+    function bindingsNote() {
+      if (keySync === "legacy") {
+        return "The daemon is using the keys in its config.json. These apply when it is not running.";
+      }
+      if (keySync === "config") {
+        return "These are the keys from the daemon's config.json. Change one here and this panel takes over.";
+      }
+      if (keySync === "panel" && pageOnly.length) {
+        const names = HELP_ORDER.filter(([command]) => pageOnly.includes(command)).map(([, description]) => description).join(", ");
+        return `The daemon cannot listen for the key set for: ${names}. It works while the browser has focus.`;
+      }
+      return null;
     }
     const panel = new BindingsPanel(document, {
       rows: HELP_ORDER,
       getBindings: () => bindings,
-      isDaemonConnected: () => daemonConnected,
+      getNote: bindingsNote,
       onAssign: (command, code, key) => setBindings(assign(bindings, command, code, key)),
       onPreset: (name) => setBindings(fromPreset(name)),
       anchor: () => document.getElementById(HUD_ID)
@@ -1430,18 +1512,27 @@
       if (target.isContentEditable) return true;
       return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
     }
+    function activeElement() {
+      let element = document.activeElement;
+      while (element?.shadowRoot?.activeElement) {
+        element = element.shadowRoot.activeElement;
+      }
+      return element;
+    }
     window.addEventListener("scroll", refresh, { passive: true });
     window.addEventListener(
       "keydown",
       (event) => {
         if (panel.handleKey(event)) return;
-        if (isTyping(event.target)) return;
-        if (daemonConnected) return;
+        if (isTyping(event.composedPath?.()[0] ?? event.target)) return;
         if (event.ctrlKey || event.altKey || event.metaKey) return;
         const command = commandFor(bindings, event.code);
         if (!command || ignoredOnStandby(command)) return;
+        const synced = keySync === "panel" || keySync === "config";
+        if (daemonConnected && !synced) return;
         event.preventDefault();
         event.stopPropagation();
+        if (daemonConnected && !pageOnly.includes(command)) return;
         handleCommand(command);
       },
       true

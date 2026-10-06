@@ -45,7 +45,14 @@ async def main() -> None:
     bus = EventBus()
     bus.bind_loop(asyncio.get_running_loop())
 
-    app = create_app(bus, config.browser_settings(), poll_timeout=poll_timeout)
+    # There is no hook here to re-point, but the endpoint, its guard and
+    # what /health reports afterwards are all the real thing.
+    app = create_app(
+        bus,
+        config.browser_settings(),
+        poll_timeout=poll_timeout,
+        on_bindings=lambda _bindings: None,
+    )
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", port)

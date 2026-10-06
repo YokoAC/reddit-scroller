@@ -113,6 +113,31 @@ export class Transport {
     }
   }
 
+  /**
+   * Send the page's key bindings for the daemon to listen for. Never throws:
+   * `ok` is false for a daemon that is down, predates the endpoint, or
+   * refuses, and the caller then leaves the daemon to its own keys.
+   */
+  async postBindings(codes) {
+    const failed = { ok: false, unsupported: [] };
+    try {
+      const response = await this._request({
+        method: "POST",
+        url: `${this._base}/bindings`,
+        body: JSON.stringify({ bindings: codes }),
+      });
+      if (response.status !== 200) return failed;
+      const body = JSON.parse(response.text);
+      if (body.ok !== true) return failed;
+      return {
+        ok: true,
+        unsupported: Array.isArray(body.unsupported) ? body.unsupported : [],
+      };
+    } catch {
+      return failed;
+    }
+  }
+
   async _json(method, path) {
     const response = await this._request({
       method,

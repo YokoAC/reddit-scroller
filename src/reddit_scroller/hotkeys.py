@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
-from .config import Config
+from .config import Config, KeyBinding
 
 # Commands that should keep firing while their key is held, letting Windows'
 # auto-repeat ramp the value. Every other command fires once per physical
@@ -23,10 +23,23 @@ class HotkeyListener:
     """
 
     def __init__(self, config: Config, on_command: Callable[[str], None]) -> None:
-        self._config = config
         self._on_command = on_command
+        self._commands: dict[tuple[int, bool], str] = {}
         self._held: set[tuple[int, bool]] = set()
         self._hooks: list[Any] = []
+        self.set_bindings(config.bindings)
+
+    def set_bindings(self, bindings: Mapping[str, KeyBinding]) -> None:
+        """Listen for these keys from now on. Safe to call while hooked.
+
+        Called from the server's thread while the hook runs on its own, so the
+        table is replaced in one assignment rather than edited in place.
+        """
+        self._commands = {
+            (binding.scan_code, binding.is_keypad): command
+            for command, binding in bindings.items()
+        }
+        self._held.clear()
 
     @staticmethod
     def _identity(event: Any) -> tuple[int, bool]:
@@ -37,7 +50,7 @@ class HotkeyListener:
 
     def handle_press(self, event: Any) -> str | None:
         identity = self._identity(event)
-        command = self._config.lookup(*identity)
+        command = self._commands.get(identity)
         if command is None:
             return None
         if identity in self._held and command not in REPEAT_ON_HOLD:

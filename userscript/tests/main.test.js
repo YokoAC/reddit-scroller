@@ -76,6 +76,22 @@ const SETTINGS = {
   },
 };
 
+// The daemon's default keys, as it reports them on /health.
+const NUMPAD_CODES = {
+  toggle: "Numpad0",
+  open: "NumpadEnter",
+  back: "NumpadDecimal",
+  faster: "NumpadAdd",
+  slower: "NumpadSubtract",
+  prev: "Numpad8",
+  next: "Numpad2",
+  reverse: "Numpad5",
+  help: "NumpadMultiply",
+  standby: "Numpad1",
+  image_prev: "Numpad4",
+  image_next: "Numpad6",
+};
+
 function feedHtml() {
   const posts = POSTS.map(
     (p) =>
@@ -94,6 +110,9 @@ class Page {
     session = null,
     hidden = false,
     stored = {},
+    // false: a daemon from before POST /bindings, which keeps its own keys.
+    // true, or a list of commands whose key it cannot hook: a current one.
+    daemonKeys = false,
   } = {}) {
     const page = new Page();
     // runScripts: "outside-only" gives the window a real eval running in its
@@ -148,6 +167,7 @@ class Page {
     window.GM_setValue = (key, value) => {
       page.stored[key] = value;
     };
+    page.sentBindings = [];
     page.menu = {};
     window.GM_registerMenuCommand = (name, run) => {
       page.menu[name] = run;
@@ -159,10 +179,19 @@ class Page {
         setTimeout(() => opts.onload({ status, responseText: text }), 1);
       if (!daemonUp) return setTimeout(() => opts.onerror({}), 1);
       if (opts.url.includes("/health")) {
+        const reported = daemonKeys
+          ? { binding_codes: NUMPAD_CODES, ...settings }
+          : settings;
         return respond(
           200,
-          JSON.stringify({ ok: true, settings, cursor: page._seq }),
+          JSON.stringify({ ok: true, settings: reported, cursor: page._seq }),
         );
+      }
+      if (opts.url.includes("/bindings")) {
+        if (!daemonKeys) return respond(404, "");
+        page.sentBindings.push(JSON.parse(opts.data).bindings);
+        const unsupported = Array.isArray(daemonKeys) ? daemonKeys : [];
+        return respond(200, JSON.stringify({ ok: true, unsupported }));
       }
       if (opts.url.includes("/events")) {
         // Model the real long poll: hold briefly for a command, then return
@@ -226,8 +255,9 @@ class Page {
       code,
       bubbles: true,
     });
-    if (target) Object.defineProperty(event, "target", { value: target });
-    this.window.dispatchEvent(event);
+    // On the element itself, so the event really travels up from it: the
+    // handler reads the composed path, which a faked `target` would not have.
+    (target ?? this.window).dispatchEvent(event);
     await this.settle();
   }
 
@@ -944,6 +974,196 @@ describe("key bindings", () => {
     const help = doc().querySelector("#rs-hud .rs-help");
     expect(help.hidden).toBe(false);
     expect(help.textContent).toContain("Num 0");
+  });
+});
+
+describe("the panel's keys and the daemon", () => {
+  const doc = () => page.window.document;
+  const panel = () => doc().getElementById("rs-bindings");
+  const note = () => panel().querySelector(".rs-bindings-note");
+  const bindButton = (command) =>
+    panel().querySelector(`button[data-command="${command}"]`);
+  const openPanel = () => doc().querySelector("#rs-hud button.rs-gear").click();
+  const SPACE = { toggle: { code: "Space", label: "Space" } };
+
+  async function fire(code, init = {}, target = doc().body) {
+    const event = new page.window.KeyboardEvent("keydown", {
+      code,
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      ...init,
+    });
+    target.dispatchEvent(event);
+    await page.settle();
+    return event;
+  }
+
+  it("are sent to the daemon when the page connects", async () => {
+    page = await Page.open({
+      daemonKeys: true,
+      stored: { "rs-bindings": SPACE },
+    });
+    await page.settle();
+    expect(page.sentBindings).toHaveLength(1);
+    expect(page.sentBindings[0]).toEqual({ ...NUMPAD_CODES, toggle: "Space" });
+  });
+
+  it("are not sent when the panel was never changed", async () => {
+    // config.json's keys stay in effect until the user changes one here.
+    page = await Page.open({
+      daemonKeys: true,
+      settings: {
+        ...SETTINGS,
+        binding_codes: { ...NUMPAD_CODES, toggle: "Numpad9" },
+      },
+    });
+    await page.settle();
+    expect(page.sentBindings).toEqual([]);
+    expect(page.stored).not.toHaveProperty("rs-bindings");
+    // ...and the panel and the key list show the daemon's keys.
+    openPanel();
+    expect(bindButton("toggle").textContent).toBe("Num 9");
+    expect(note().textContent).toContain("config.json");
+  });
+
+  it("take over from config.json at the first change, keeping its other keys", async () => {
+    page = await Page.open({
+      daemonKeys: true,
+      settings: {
+        ...SETTINGS,
+        binding_codes: { ...NUMPAD_CODES, toggle: "Numpad9" },
+      },
+    });
+    openPanel();
+    bindButton("faster").click();
+    await fire("KeyF", { key: "f" });
+    expect(page.sentBindings.at(-1)).toEqual({
+      ...NUMPAD_CODES,
+      toggle: "Numpad9",
+      faster: "KeyF",
+    });
+    expect(page.stored["rs-bindings"].toggle.code).toBe("Numpad9");
+    expect(note().hidden).toBe(true);
+  });
+
+  it("are sent again on every change", async () => {
+    page = await Page.open({
+      daemonKeys: true,
+      stored: { "rs-bindings": SPACE },
+    });
+    openPanel();
+    panel().querySelector('button[data-preset="laptop"]').click();
+    await page.settle();
+    expect(page.sentBindings).toHaveLength(2);
+    expect(page.sentBindings[1].faster).toBe("KeyF");
+  });
+
+  it("leave a bound key to the daemon, but keep it from the page", async () => {
+    // The daemon delivers the command. If the page acted too it would run
+    // twice; if it let the key through, Space would also scroll.
+    page = await Page.open({
+      daemonKeys: true,
+      stored: { "rs-bindings": SPACE },
+    });
+    await page.settle();
+    const event = await fire("Space", { key: " " });
+    expect(event.defaultPrevented).toBe(true);
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("handle a key the daemon cannot hook in the page instead", async () => {
+    page = await Page.open({
+      daemonKeys: ["toggle"],
+      stored: { "rs-bindings": SPACE },
+    });
+    await page.settle();
+    await fire("Space", { key: " " });
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+    openPanel();
+    expect(note().textContent).toContain("pause / resume");
+  });
+
+  it("stay page-only with a daemon that predates them", async () => {
+    page = await Page.open({ stored: { "rs-bindings": SPACE } });
+    await page.settle();
+    const event = await fire("Space", { key: " " });
+    expect(event.defaultPrevented).toBe(false);
+    openPanel();
+    expect(note().textContent).toContain("config.json");
+  });
+
+  it("show the keys in the key list once the daemon follows them", async () => {
+    page = await Page.open({
+      daemonKeys: true,
+      stored: { "rs-bindings": SPACE },
+    });
+    await page.settle();
+    const help = doc().querySelector("#rs-hud .rs-help");
+    expect(help.hidden).toBe(false);
+    expect(help.textContent).toContain("Space");
+  });
+});
+
+describe("typing in a Reddit text field", () => {
+  const doc = () => page.window.document;
+
+  function field({ inShadow = false } = {}) {
+    const input = doc().createElement("textarea");
+    if (inShadow) {
+      const host = doc().createElement("shreddit-composer");
+      host.attachShadow({ mode: "open" }).append(input);
+      doc().body.append(host);
+    } else {
+      doc().body.append(input);
+    }
+    input.focus();
+    return input;
+  }
+
+  it("drops commands from the daemon, whose hook cannot see focus", async () => {
+    // Backspace bound to "back" must not navigate away from a comment draft.
+    page = await Page.open();
+    const input = field();
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+    input.blur();
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("finds the field inside an open shadow root", async () => {
+    page = await Page.open();
+    field({ inShadow: true });
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+  });
+
+  it("does not drop them once another window has the focus", async () => {
+    // A field stays the active element after alt-tabbing away. That must not
+    // leave the numpad dead for as long as the game is in front.
+    page = await Page.open();
+    field();
+    doc().hasFocus = () => false;
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+
+  it("treats a key typed inside a shadow root as text, not a command", async () => {
+    page = await Page.open({ daemonUp: false });
+    const input = field({ inShadow: true });
+    const event = new page.window.KeyboardEvent("keydown", {
+      code: "Numpad0",
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+    await page.settle();
+    expect(event.defaultPrevented).toBe(false);
+    expect(page.hud(".rs-status")).toBe("PAUSED");
   });
 });
 

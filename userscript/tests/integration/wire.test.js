@@ -321,6 +321,27 @@ describe("state reporting", () => {
   });
 });
 
+describe("key bindings", () => {
+  it("are accepted by the real endpoint and reported back on /health", async () => {
+    const transport = makeTransport();
+    const result = await transport.postBindings({
+      toggle: "Space",
+      open: null,
+      faster: "MediaStop",
+    });
+    // A key the hook has no scan code for is reported, not refused.
+    expect(result).toEqual({ ok: true, unsupported: ["faster"] });
+
+    const health = await request({
+      method: "GET",
+      url: `http://127.0.0.1:${daemon.port}/health`,
+    });
+    expect(JSON.parse(health.text).settings.binding_codes).toEqual({
+      toggle: "Space",
+    });
+  });
+});
+
 describe("when the daemon goes away", () => {
   it("reports the connection lost and keeps retrying", async () => {
     const changes = [];

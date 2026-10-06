@@ -80,9 +80,19 @@ boundary — it is unreachable from off the machine, so there is nothing to
 authenticate. Anything that widens it (binding another interface, adding CORS
 headers, making the host configurable) removes the only thing protecting it.
 
-One known limitation: a simple cross-origin `POST /state` does not trigger a
-preflight, so any page you visit could write junk into the daemon's state
-slot. Nothing reads that state today, so the impact is nil — but it stops
+`POST /bindings` changes which keys a global hook listens for, so it is the one
+request that checks who is asking. A web page can reach `127.0.0.1`, but it
+cannot hide where it comes from: the browser attaches an `Origin` header to its
+POST, and page script cannot remove or forge one. The request is refused when
+that header names a web origin (`http`, `https` or `null`), when `Host` is not
+the loopback address (DNS rebinding), or when the body is not declared as JSON.
+A userscript manager sends no `Origin`, or an extension one. A program already
+running on the machine is not stopped by this, and does not need to be: it
+could edit `config.json` instead.
+
+One known limitation remains: a simple cross-origin `POST /state` does not
+trigger a preflight, so any page you visit could write junk into the daemon's
+state slot. Nothing reads that state today, so the impact is nil — but it stops
 being nil if `/state` ever gains a consumer.
 
 ### Keys matched by scan code, and never suppressed
@@ -185,29 +195,41 @@ The target is the selected post in the feed and the post itself in a thread.
 At either end Reddit marks the button `aria-disabled="true"`, and the key does
 nothing.
 
-### Rebinding, in the page first
+### Rebinding: one panel for both halves
 
 The defaults are numpad keys, and a keyboard without a numpad could not use the
-script at all: `config.json` accepts only numpad names, and the page's own key
+script at all: `config.json` accepted only numpad names, and the page's own key
 map was compiled into the bundle.
 
-A bindings panel now rebinds the page's keys. It opens from the userscript
-manager's menu and from a gear on the HUD, because it must not depend on a key
-the user may not have. The gear is the HUD's only clickable element; the rest
-stays click-through. Bindings live in GM storage (`rs-bindings`) and persist
-until reset.
+A bindings panel rebinds the keys. It opens from the userscript manager's menu
+and from a gear on the HUD, because it must not depend on a key the user may
+not have. Bindings live in GM storage (`rs-bindings`) and persist until reset.
 
-This covers the page only, on purpose. Any key is safe to bind there: the page
-handles keys only while it has focus, never while a text field does, and never
-with Ctrl, Alt or Meta held — so binding `F` leaves Ctrl+F alone. The daemon is
-the opposite case. Its hook is global and suppresses nothing, so a bare `F`
-bound there would fire in every application; it needs modifier combinations
-first. Until then the daemon's `config.json` wins while it is connected, and
-the panel says so.
+The panel's keys apply to the daemon too. When the page connects, and whenever
+a key changes, it sends its bindings to `POST /bindings`; the daemon re-points
+its hook and keeps them in memory. Nothing is written to `config.json`: the
+page is the source of truth and re-sends on every connect, so a restarted
+daemon is corrected within seconds. Commands still travel as names, so other
+open tabs keep working without knowing the keys.
 
-Keys are matched by `KeyboardEvent.code`, the physical position, as the numpad
-keys always were, so a layout switch does not move a binding. The label shown
-is the character the user pressed when binding it.
+Keys set in `config.json` stay in effect until the panel is first changed. A
+page with nothing stored sends nothing; it reads the daemon's keys from
+`/health` and shows those. The first change in the panel is stored, sent, and
+wins from then on.
+
+Any single key may be bound, on both sides, at the user's own risk. In the page
+that risk is small: it handles keys only while it has focus, never while a text
+field does, and never with Ctrl, Alt or Meta held. The daemon's hook is global
+and suppresses nothing, so a bare `F` bound there fires in every application.
+That is accepted as the user's choice. One case is guarded, because the damage
+is done before the user can react: commands from the daemon are dropped while a
+text field in the Reddit page has focus, so Backspace bound to "back" cannot
+navigate away from a half-written comment.
+
+Keys are named by `KeyboardEvent.code`, the physical position, on both sides,
+so a layout switch does not move a binding. The daemon turns a code into a
+Windows scan code from a fixed table (`keys.py`); a key not in it is reported
+back and stays a page-only key.
 
 A bound key loses its page default and never reaches Reddit's own shortcuts:
 the listener runs in the capture phase on `window` and stops the event. On

@@ -8,12 +8,12 @@ const ROWS = [
   ["open", "open selected post"],
 ];
 
-function setup({ daemon = false, anchor } = {}) {
+function setup({ note = null, anchor } = {}) {
   const state = { bindings: fromPreset("numpad"), presets: [] };
   const panel = new BindingsPanel(document, {
     rows: ROWS,
     getBindings: () => state.bindings,
-    isDaemonConnected: () => daemon,
+    getNote: () => note,
     anchor,
     onAssign: (command, code, key) => {
       state.bindings = assign(state.bindings, command, code, key);
@@ -152,15 +152,15 @@ describe("BindingsPanel", () => {
     expect(bindButton("toggle").textContent).toBe("Space");
   });
 
-  it("says the daemon's keys are in charge while it is connected", () => {
-    const { panel } = setup({ daemon: true });
+  it("shows the note it is given", () => {
+    const { panel } = setup({ note: "The daemon is using config.json." });
     panel.show();
     const note = root().querySelector(".rs-bindings-note");
     expect(note.hidden).toBe(false);
-    expect(note.textContent).toContain("config.json");
+    expect(note.textContent).toBe("The daemon is using config.json.");
   });
 
-  it("hides that note in browser-only mode", () => {
+  it("hides the note when there is nothing to say", () => {
     const { panel } = setup();
     panel.show();
     expect(root().querySelector(".rs-bindings-note").hidden).toBe(true);

@@ -3,17 +3,24 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from aiohttp import web
 
 from .bus import EventBus
+from .config import ConfigError, KeyBinding, resolve_codes
 
 # Typed keys rather than bare strings: aiohttp warns on the latter, and these
 # let the checker verify what goes in and comes back out of the app store.
 BUS: web.AppKey[EventBus] = web.AppKey("bus")
 SETTINGS: web.AppKey[dict[str, Any]] = web.AppKey("settings")
 POLL_TIMEOUT: web.AppKey[float] = web.AppKey("poll_timeout")
+ON_BINDINGS: web.AppKey[Callable[[dict[str, KeyBinding]], None] | None] = web.AppKey(
+    "on_bindings"
+)
+
+_LOOPBACK = frozenset({"127.0.0.1", "localhost"})
 
 
 def _cursor_from(request: web.Request) -> int:
@@ -65,23 +72,82 @@ async def _post_state(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+def _refusal(request: web.Request) -> str | None:
+    """Why this request may not change the keys, or None if it may.
+
+    The loopback bind keeps other machines out, but not the pages open in the
+    user's own browser. Those cannot hide what they are: the browser attaches
+    Origin to a page's POST, and page script can neither remove nor forge it.
+    A userscript manager sends none, or its extension's.
+    """
+    origin = request.headers.get("Origin")
+    if origin is not None and not origin.split("://")[0].endswith("-extension"):
+        return f"requests from {origin} are not accepted"
+    # DNS rebinding makes a hostile name same-origin with us; Host gives it away.
+    if request.host.rsplit(":", 1)[0] not in _LOOPBACK:
+        return f"unexpected Host {request.host}"
+    # The types a plain HTML form can send skip the CORS preflight.
+    if request.content_type != "application/json":
+        return "the body must be sent as application/json"
+    return None
+
+
+def _bad_request(message: str) -> web.Response:
+    return web.json_response({"ok": False, "error": message}, status=400)
+
+
+async def _post_bindings(request: web.Request) -> web.Response:
+    refusal = _refusal(request)
+    if refusal is not None:
+        return web.json_response({"ok": False, "error": refusal}, status=403)
+    try:
+        payload = await request.json()
+    except (json.JSONDecodeError, ValueError):
+        return _bad_request("body is not valid JSON")
+    if not isinstance(payload, dict) or "bindings" not in payload:
+        return _bad_request('body must be an object with a "bindings" key')
+    try:
+        resolved = resolve_codes(payload["bindings"])
+    except ConfigError as exc:
+        return _bad_request(str(exc))
+
+    apply = request.app[ON_BINDINGS]
+    if apply is None:
+        return web.json_response(
+            {"ok": False, "error": "no keyboard listener to apply them to"},
+            status=503,
+        )
+    apply(resolved.bindings)
+    # /health describes the keys in effect, so a page that has none of its own
+    # shows these rather than config.json's.
+    settings = request.app[SETTINGS]
+    settings["binding_codes"] = resolved.codes
+    settings["bindings"] = resolved.names()
+    return web.json_response({"ok": True, "unsupported": resolved.unsupported})
+
+
 async def _get_state(request: web.Request) -> web.Response:
     return web.json_response(request.app[BUS].get_state())
 
 
 def create_app(
-    bus: EventBus, settings: dict[str, Any], poll_timeout: float = 25.0
+    bus: EventBus,
+    settings: dict[str, Any],
+    poll_timeout: float = 25.0,
+    on_bindings: Callable[[dict[str, KeyBinding]], None] | None = None,
 ) -> web.Application:
     app = web.Application()
     app[BUS] = bus
     app[SETTINGS] = settings
     app[POLL_TIMEOUT] = poll_timeout
+    app[ON_BINDINGS] = on_bindings
     app.add_routes(
         [
             web.get("/health", _health),
             web.get("/events", _events),
             web.get("/state", _get_state),
             web.post("/state", _post_state),
+            web.post("/bindings", _post_bindings),
         ]
     )
     return app

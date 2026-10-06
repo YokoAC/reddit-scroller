@@ -107,6 +107,30 @@ export function parseStored(raw) {
   return result;
 }
 
+/** command -> key code or null: what the daemon is sent. */
+export function toCodes(bindings) {
+  return Object.fromEntries(
+    COMMANDS.map((command) => [command, bindings[command]?.code ?? null]),
+  );
+}
+
+/**
+ * Bindings from the command -> key code map the daemon reports. A command it
+ * does not mention has no key there, so it has none here either.
+ */
+export function fromCodes(codes) {
+  const source = codes && typeof codes === "object" ? codes : {};
+  return Object.fromEntries(
+    COMMANDS.map((command) => {
+      const code = source[command];
+      return [
+        command,
+        typeof code === "string" ? { code, label: labelFor(code) } : null,
+      ];
+    }),
+  );
+}
+
 /** `bindings` with `code` on `command`, taken from whichever command had it. */
 export function assign(bindings, command, code, key) {
   const next = {};

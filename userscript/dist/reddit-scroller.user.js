@@ -605,7 +605,13 @@
   font: 500 15px/1.4 "Segoe UI", system-ui, sans-serif;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
 }
-#${PANEL_ID} h2 { margin: 0 0 10px; font-size: 17px; color: #f2f2f2; }
+#${PANEL_ID} .rs-bindings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+#${PANEL_ID} h2 { margin: 0; font-size: 17px; color: #f2f2f2; }
 #${PANEL_ID} .rs-bindings-note { margin: 0 0 10px; font-size: 13px; color: #e3b341; }
 #${PANEL_ID} .rs-bindings-row {
   display: flex;
@@ -641,7 +647,11 @@
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
-#${PANEL_ID} button[data-close] { margin-left: auto; }
+#${PANEL_ID} button[data-close] {
+  padding: 0 8px;
+  font-size: 20px;
+  line-height: 1.3;
+}
 `;
   var MODIFIER = /^(Shift|Control|Alt|Meta|OS)/;
   var BindingsPanel = class {
@@ -727,13 +737,18 @@
       const bindings = this._getBindings();
       const root = this._root;
       root.textContent = "";
+      const head = this._doc.createElement("div");
+      head.className = "rs-bindings-head";
       const title = this._doc.createElement("h2");
       title.textContent = "Key bindings";
+      const close = this._button("\xD7", "close", "");
+      close.setAttribute("aria-label", "Close");
+      head.append(title, close);
       const note = this._doc.createElement("p");
       note.className = "rs-bindings-note";
       note.textContent = "The daemon is connected, so the keys in its config.json are active. These apply when it is not running.";
       note.hidden = !this._isDaemonConnected();
-      root.append(title, note);
+      root.append(head, note);
       for (const [command, description] of this._rows) {
         const row = this._doc.createElement("div");
         row.className = "rs-bindings-row";
@@ -754,8 +769,7 @@
       foot.className = "rs-bindings-foot";
       foot.append(
         this._button("Numpad (default)", "preset", "numpad"),
-        this._button("Laptop", "preset", "laptop"),
-        this._button("Close", "close", "")
+        this._button("Laptop", "preset", "laptop")
       );
       root.append(foot);
     }

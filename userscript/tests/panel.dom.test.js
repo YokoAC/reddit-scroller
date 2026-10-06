@@ -125,6 +125,17 @@ describe("BindingsPanel", () => {
     expect(panel.open).toBe(false);
   });
 
+  it("closes from an x in its header, leaving the footer to the presets", () => {
+    const { panel } = setup();
+    panel.show();
+    const close = root().querySelector("button[data-close]");
+    expect(close.textContent).toBe("×");
+    // The glyph says nothing to a screen reader.
+    expect(close.getAttribute("aria-label")).toBe("Close");
+    expect(close.closest(".rs-bindings-head")).not.toBeNull();
+    expect(root().querySelectorAll(".rs-bindings-foot button")).toHaveLength(2);
+  });
+
   it("swallows other keys while open, so they are not commands", () => {
     const { panel } = setup();
     panel.show();

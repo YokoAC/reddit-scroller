@@ -23,6 +23,7 @@ import {
 const PORT_KEY = "rs-port";
 const STANDBY_KEY = "rs-standby";
 const BINDINGS_KEY = "rs-bindings";
+const SPEED_KEY = "rs-speed";
 const STATE_KEY = "rs-scroll-state";
 const FLASH_MS = 900;
 const HELP_AUTOSHOW_MS = 6000;
@@ -35,15 +36,29 @@ const DEFAULTS = {
   focus_line: 0.25,
 };
 
-// Speed lives in sessionStorage, not GM storage: it should survive opening a
-// thread and coming back, but a brand-new tab is a fresh start that honours
-// config.json's default_speed. Nothing about whether we were scrolling is
-// remembered -- a page must never begin scrolling on its own.
+/** A stored speed, or null. Both stores are user-editable, so check it. */
+function asSpeed(value) {
+  const speed = typeof value === "number" ? value : value?.speed;
+  if (typeof speed !== "number" || !Number.isFinite(speed) || speed <= 0) {
+    return null;
+  }
+  return { speed, exact: value?.exact === true };
+}
+
+// The speed is kept in two places. sessionStorage holds this tab's own, so
+// two tabs at different speeds each keep theirs across a navigation. GM
+// storage holds the one last set anywhere, which is where a new tab starts.
+// Nothing about whether we were scrolling is remembered -- a page must never
+// begin scrolling on its own.
 function loadPersisted() {
   try {
-    const raw = sessionStorage.getItem(STATE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const own = asSpeed(JSON.parse(sessionStorage.getItem(STATE_KEY)));
+    if (own) return own;
+  } catch {
+    // Fall through to the shared one.
+  }
+  try {
+    return asSpeed(GM_getValue(SPEED_KEY));
   } catch {
     return null;
   }
@@ -54,6 +69,17 @@ function persist(state) {
     sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
     // Persistence is a nicety; losing it is not worth breaking over.
+  }
+}
+
+// Only for a speed the user set. The tab's speed is saved on every page
+// unload; storing that here too would make an untouched default "theirs",
+// and config.json's default_speed would stop applying after the first page.
+function persistChosen(state) {
+  try {
+    GM_setValue(SPEED_KEY, state);
+  } catch {
+    // It still applies in this tab.
   }
 }
 
@@ -150,7 +176,7 @@ function boot() {
     onSettings: () => toggleBindings(),
     onSpeed: (value) => {
       engine.setExactSpeed(value);
-      saveSpeed();
+      rememberSpeed();
       paint();
     },
   });
@@ -224,6 +250,12 @@ function boot() {
     persist({ speed: engine.speed, exact: engine.exact });
   }
 
+  /** The user set a speed: keep it for this tab and for every new one. */
+  function rememberSpeed() {
+    saveSpeed();
+    persistChosen({ speed: engine.speed, exact: engine.exact });
+  }
+
   function scrollToSelected() {
     const element = selection.selectedElement;
     if (!element) return;
@@ -246,11 +278,11 @@ function boot() {
     },
     speedUp() {
       engine.adjustSpeed(settings.speed_step);
-      saveSpeed();
+      rememberSpeed();
     },
     speedDown() {
       engine.adjustSpeed(-settings.speed_step);
-      saveSpeed();
+      rememberSpeed();
     },
     openSelected() {
       const post = selection.selected;

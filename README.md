@@ -165,9 +165,8 @@ back onto the steps.
 **Opening a thread always lands paused**, at the top, so you never scroll past the
 opening. Pressing `.` returns to the feed, also paused. Press `0` when you're ready.
 
-**A page never starts scrolling on its own.** Your speed is remembered within a tab,
-so opening a thread and coming back keeps it — but a new tab starts at
-`default_speed` and paused. No scroll state outlives the tab.
+**A page never starts scrolling on its own.** Your speed is remembered: each tab
+keeps its own, and a new tab starts paused at the speed you last set anywhere.
 
 **Numpad `1` switches the script off.** The HUD collapses to a single `OFF` line, the
 blue outline comes off the page, and every other key is ignored — for when you would
@@ -213,7 +212,7 @@ you leave out keeps its default.
 | Field | Default | Meaning |
 |---|---|---|
 | `port` | `8765` | Loopback port. Set the userscript's `rs-port` value to match. |
-| `default_speed` | `90` | Starting scroll speed, px/s. |
+| `default_speed` | `90` | Scroll speed, px/s, until you first set one yourself. |
 | `speed_step` | `15` | Change per `faster` / `slower` press. |
 | `speed_min` / `speed_max` | `5` / `600` | Speed limits for the keys. A typed speed may go below the minimum. |
 | `focus_line` | `0.25` | Where the "current post" line sits, as a fraction of screen height. |

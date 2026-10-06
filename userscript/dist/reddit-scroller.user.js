@@ -1107,6 +1107,7 @@
   var PORT_KEY = "rs-port";
   var STANDBY_KEY = "rs-standby";
   var BINDINGS_KEY = "rs-bindings";
+  var SPEED_KEY = "rs-speed";
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
   var HELP_AUTOSHOW_MS = 6e3;
@@ -1117,11 +1118,21 @@
     default_speed: 90,
     focus_line: 0.25
   };
+  function asSpeed(value) {
+    const speed = typeof value === "number" ? value : value?.speed;
+    if (typeof speed !== "number" || !Number.isFinite(speed) || speed <= 0) {
+      return null;
+    }
+    return { speed, exact: value?.exact === true };
+  }
   function loadPersisted() {
     try {
-      const raw = sessionStorage.getItem(STATE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
+      const own = asSpeed(JSON.parse(sessionStorage.getItem(STATE_KEY)));
+      if (own) return own;
+    } catch {
+    }
+    try {
+      return asSpeed(GM_getValue(SPEED_KEY));
     } catch {
       return null;
     }
@@ -1129,6 +1140,12 @@
   function persist(state) {
     try {
       sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
+    } catch {
+    }
+  }
+  function persistChosen(state) {
+    try {
+      GM_setValue(SPEED_KEY, state);
     } catch {
     }
   }
@@ -1200,7 +1217,7 @@
       onSettings: () => toggleBindings(),
       onSpeed: (value) => {
         engine.setExactSpeed(value);
-        saveSpeed();
+        rememberSpeed();
         paint();
       }
     });
@@ -1260,6 +1277,10 @@
     function saveSpeed() {
       persist({ speed: engine.speed, exact: engine.exact });
     }
+    function rememberSpeed() {
+      saveSpeed();
+      persistChosen({ speed: engine.speed, exact: engine.exact });
+    }
     function scrollToSelected() {
       const element = selection.selectedElement;
       if (!element) return;
@@ -1277,11 +1298,11 @@
       },
       speedUp() {
         engine.adjustSpeed(settings.speed_step);
-        saveSpeed();
+        rememberSpeed();
       },
       speedDown() {
         engine.adjustSpeed(-settings.speed_step);
-        saveSpeed();
+        rememberSpeed();
       },
       openSelected() {
         const post = selection.selected;

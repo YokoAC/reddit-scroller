@@ -108,15 +108,22 @@ Only `faster` and `slower` repeat while held, so the speed ramps; everything
 else fires once per physical press, so a finger resting on the toggle key
 cannot strobe the scroller.
 
-### State that deliberately does not persist
+### What persists, and what deliberately does not
 
-Speed lives in `sessionStorage`: it survives opening a thread and coming back,
-but a new tab is a fresh start honouring `default_speed` from `config.json`.
+Speed is remembered. Each tab keeps its own in `sessionStorage`, so opening a
+thread and coming back does not change it; a new tab starts from the speed last
+set anywhere, kept in GM storage (`rs-speed`).
 
-Whether scrolling was running is **not** remembered at all. It was once, via
+That reverses an earlier decision. Speed was once dropped from GM storage
+because a stored speed always won, so `default_speed` in `config.json` applied
+only on the very first run. That is the behaviour again, now on purpose:
+`default_speed` is the speed until the user first sets one. A user who found
+the default too fast had to edit a settings file to change it, and a
+browser-only user had no file to edit at all.
+
+Whether scrolling was running is **not** remembered. It was once, via
 `GM_setValue`, which meant closing a tab mid-scroll made the next Reddit page
-start scrolling by itself — and because a stored speed always won, the
-configured `default_speed` only ever applied on the very first run.
+start scrolling by itself.
 
 Navigation always lands paused. Stopping the engine matters as much as
 persisting, because the back-forward cache can restore a page without
@@ -218,8 +225,8 @@ landed on 5, and back up gave 20, 35, 50 — the default of 90 was unreachable.
 
 Clicking the speed on the HUD turns it into a field for an exact value, from 1
 to the maximum. The limits bound the keys, not a number typed on purpose, so a
-typed 3 survives a daemon reconnect; the next key press moves back onto the
-steps. This is the HUD's second clickable spot, after the gear.
+typed 3 survives a daemon reconnect and is stored with a flag saying so; the
+next key press moves back onto the steps. This is the HUD's second clickable spot, after the gear.
 
 While that field is open, and for half a second after, commands from the daemon
 are ignored. Its hook is global and suppresses nothing, so digits typed on the

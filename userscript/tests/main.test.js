@@ -708,6 +708,80 @@ describe("typing a speed", () => {
   });
 });
 
+describe("the speed you last set", () => {
+  it("starts a new tab, without a daemon", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-speed": { speed: 200, exact: false } },
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 200 px/s");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+  });
+
+  it("wins over the daemon's default_speed", async () => {
+    page = await Page.open({
+      settings: { ...SETTINGS, default_speed: 210 },
+      stored: { "rs-speed": { speed: 200, exact: false } },
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 200 px/s");
+  });
+
+  it("is stored whenever the speed changes", async () => {
+    page = await Page.open({ daemonUp: false });
+    await page.press("NumpadAdd");
+    expect(page.stored["rs-speed"]).toEqual({ speed: 105, exact: false });
+  });
+
+  it("is not stored when nobody set it", async () => {
+    // Leaving a page saves the tab's speed. If that also counted as "yours",
+    // an untouched default would stick and default_speed would never apply.
+    page = await Page.open({
+      settings: { ...SETTINGS, default_speed: 210 },
+    });
+    await page.send("toggle");
+    page.window.dispatchEvent(new page.window.Event("pagehide"));
+    expect(page.storedSpeed).toBe(210);
+    expect(page.stored).not.toHaveProperty("rs-speed");
+  });
+
+  it("keeps a typed speed below the minimum, with its flag", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      stored: { "rs-speed": { speed: 3, exact: true } },
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 3 px/s");
+  });
+
+  it("gives way to the tab's own speed", async () => {
+    // Two tabs at different speeds each keep theirs across a navigation.
+    page = await Page.open({
+      daemonUp: false,
+      session: JSON.stringify({ speed: 45 }),
+      stored: { "rs-speed": { speed: 200, exact: false } },
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 45 px/s");
+  });
+
+  it("accepts a bare number, as someone editing the value by hand would write", async () => {
+    page = await Page.open({ daemonUp: false, stored: { "rs-speed": 200 } });
+    expect(page.hud(".rs-speed")).toBe("▼ 200 px/s");
+  });
+
+  it("is ignored when the stored value is not a speed", async () => {
+    for (const junk of ["fast", { speed: "200" }, { speed: -5 }, null, []]) {
+      page = await Page.open({
+        daemonUp: false,
+        stored: { "rs-speed": junk },
+      });
+      expect(page.hud(".rs-speed"), JSON.stringify(junk)).toBe(
+        "\u25bc 90 px/s",
+      );
+      page.close();
+    }
+    page = null;
+  });
+});
+
 describe("the slowest key speed", () => {
   it("is 5 px/s without a daemon to say otherwise", async () => {
     page = await Page.open({ daemonUp: false });

@@ -591,13 +591,12 @@
   var CSS2 = `
 #${PANEL_ID} {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  right: 16px;
   z-index: 2147483647;
-  width: 420px;
+  /* border-box, so the padding counts towards the height limit set in _place. */
+  box-sizing: border-box;
+  width: 460px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
   overflow: auto;
   padding: 18px 20px;
   border-radius: 10px;
@@ -630,6 +629,11 @@
   font-family: "Cascadia Mono", Consolas, monospace;
   color: #58a6ff;
 }
+/* Amber, as on the HUD: nothing is broken, the action just has no key. */
+#${PANEL_ID} button[data-unbound] {
+  color: #e3b341;
+  border-color: rgba(227, 179, 65, 0.5);
+}
 #${PANEL_ID} .rs-bindings-foot {
   display: flex;
   gap: 8px;
@@ -646,13 +650,14 @@
      * The panel holds no bindings itself: it reads them through `getBindings`
      * and reports changes through `onAssign` and `onPreset`.
      */
-    constructor(doc, { rows, getBindings, isDaemonConnected, onAssign, onPreset }) {
+    constructor(doc, { rows, getBindings, isDaemonConnected, onAssign, onPreset, anchor }) {
       this._doc = doc;
       this._rows = rows;
       this._getBindings = getBindings;
       this._isDaemonConnected = isDaemonConnected;
       this._onAssign = onAssign;
       this._onPreset = onPreset;
+      this._anchor = anchor;
       this._root = null;
       this._capturing = null;
     }
@@ -680,9 +685,19 @@
       root.setAttribute("role", "dialog");
       root.setAttribute("aria-label", "Key bindings");
       root.addEventListener("click", (event) => this._onClick(event));
+      this._place(root);
       this._doc.body.appendChild(root);
       this._root = root;
       this.render();
+    }
+    // Just above the HUD it was opened from, rather than over the post being
+    // read. If it is taller than the room there, it scrolls inside itself.
+    _place(root) {
+      const anchor = this._anchor?.();
+      const view = this._doc.defaultView;
+      const gap = anchor ? Math.round(view.innerHeight - anchor.getBoundingClientRect().top) + 8 : 16;
+      root.style.bottom = `${gap}px`;
+      root.style.maxHeight = `calc(100vh - ${gap + 16}px)`;
     }
     hide() {
       this._root?.remove();
@@ -729,6 +744,9 @@
           "command",
           command
         );
+        if (!bindings[command] && this._capturing !== command) {
+          button.dataset.unbound = "";
+        }
         row.append(label, button);
         root.append(row);
       }
@@ -1072,7 +1090,7 @@
       getViewportHeight: () => window.innerHeight,
       focusLine: settings.focus_line
     });
-    const hud = new Hud(document, { onSettings: () => panel.toggle() });
+    const hud = new Hud(document, { onSettings: () => toggleBindings() });
     hud.mount();
     let mode = detectMode(window.location.pathname);
     let standby = loadStandby();
@@ -1261,10 +1279,15 @@
       getBindings: () => bindings,
       isDaemonConnected: () => daemonConnected,
       onAssign: (command, code, key) => setBindings(assign(bindings, command, code, key)),
-      onPreset: (name) => setBindings(fromPreset(name))
+      onPreset: (name) => setBindings(fromPreset(name)),
+      anchor: () => document.getElementById(HUD_ID)
     });
+    function toggleBindings() {
+      if (!panel.open) showHelp(false);
+      panel.toggle();
+    }
     try {
-      GM_registerMenuCommand("Key bindings", () => panel.toggle());
+      GM_registerMenuCommand("Key bindings", toggleBindings);
     } catch {
     }
     function isTyping(target) {

@@ -6,13 +6,12 @@ const STYLE_ID = "rs-bindings-style";
 const CSS = `
 #${PANEL_ID} {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  right: 16px;
   z-index: 2147483647;
-  width: 420px;
+  /* border-box, so the padding counts towards the height limit set in _place. */
+  box-sizing: border-box;
+  width: 460px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
   overflow: auto;
   padding: 18px 20px;
   border-radius: 10px;
@@ -45,6 +44,11 @@ const CSS = `
   font-family: "Cascadia Mono", Consolas, monospace;
   color: #58a6ff;
 }
+/* Amber, as on the HUD: nothing is broken, the action just has no key. */
+#${PANEL_ID} button[data-unbound] {
+  color: #e3b341;
+  border-color: rgba(227, 179, 65, 0.5);
+}
 #${PANEL_ID} .rs-bindings-foot {
   display: flex;
   gap: 8px;
@@ -65,7 +69,7 @@ export class BindingsPanel {
    */
   constructor(
     doc,
-    { rows, getBindings, isDaemonConnected, onAssign, onPreset },
+    { rows, getBindings, isDaemonConnected, onAssign, onPreset, anchor },
   ) {
     this._doc = doc;
     this._rows = rows;
@@ -73,6 +77,7 @@ export class BindingsPanel {
     this._isDaemonConnected = isDaemonConnected;
     this._onAssign = onAssign;
     this._onPreset = onPreset;
+    this._anchor = anchor;
     this._root = null;
     this._capturing = null;
   }
@@ -104,9 +109,22 @@ export class BindingsPanel {
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", "Key bindings");
     root.addEventListener("click", (event) => this._onClick(event));
+    this._place(root);
     this._doc.body.appendChild(root);
     this._root = root;
     this.render();
+  }
+
+  // Just above the HUD it was opened from, rather than over the post being
+  // read. If it is taller than the room there, it scrolls inside itself.
+  _place(root) {
+    const anchor = this._anchor?.();
+    const view = this._doc.defaultView;
+    const gap = anchor
+      ? Math.round(view.innerHeight - anchor.getBoundingClientRect().top) + 8
+      : 16;
+    root.style.bottom = `${gap}px`;
+    root.style.maxHeight = `calc(100vh - ${gap + 16}px)`;
   }
 
   hide() {
@@ -163,6 +181,9 @@ export class BindingsPanel {
         "command",
         command,
       );
+      if (!bindings[command] && this._capturing !== command) {
+        button.dataset.unbound = "";
+      }
       row.append(label, button);
       root.append(row);
     }

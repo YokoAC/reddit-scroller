@@ -9,7 +9,7 @@ import {
 } from "./bindings.js";
 import { detectMode, resolveAction } from "./commands.js";
 import { stepGallery } from "./gallery.js";
-import { HELP_ORDER, Hud } from "./hud.js";
+import { HELP_ORDER, HUD_ID, Hud } from "./hud.js";
 import { BindingsPanel } from "./panel.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
@@ -145,7 +145,7 @@ function boot() {
     focusLine: settings.focus_line,
   });
 
-  const hud = new Hud(document, { onSettings: () => panel.toggle() });
+  const hud = new Hud(document, { onSettings: () => toggleBindings() });
   hud.mount();
 
   let mode = detectMode(window.location.pathname);
@@ -371,10 +371,18 @@ function boot() {
     onAssign: (command, code, key) =>
       setBindings(assign(bindings, command, code, key)),
     onPreset: (name) => setBindings(fromPreset(name)),
+    anchor: () => document.getElementById(HUD_ID),
   });
 
+  function toggleBindings() {
+    // The HUD's key list shows the same keys, and open it leaves the panel
+    // no room above. Closed first, so the panel measures the shorter HUD.
+    if (!panel.open) showHelp(false);
+    panel.toggle();
+  }
+
   try {
-    GM_registerMenuCommand("Key bindings", () => panel.toggle());
+    GM_registerMenuCommand("Key bindings", toggleBindings);
   } catch {
     // The gear on the HUD opens it too.
   }

@@ -292,6 +292,21 @@ test.describe("without a daemon", () => {
     expect(await page.evaluate(() => window.scrollY)).toBeLessThan(200);
   });
 
+  test("keeps the bindings panel on screen above the HUD in a short window", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1100, height: 520 });
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    await page.locator("#rs-hud .rs-gear").click();
+
+    const panel = await page.locator("#rs-bindings").boundingBox();
+    const hud = await page.locator("#rs-hud").boundingBox();
+    // Its padding once pushed the top edge off the screen.
+    expect(panel.y).toBeGreaterThanOrEqual(0);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(hud.y);
+  });
+
   test("still responds to the numpad keys", async ({ page }, testInfo) => {
     // A port nothing is listening on: the transport must fail and stay out of
     // the way rather than swallowing the keys.

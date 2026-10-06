@@ -664,6 +664,17 @@ describe("key bindings", () => {
     expect(panel()).not.toBeNull();
   });
 
+  it("closes the HUD's key list when the panel opens", async () => {
+    // Both list the keys, and the open list makes the HUD too tall to sit
+    // under the panel.
+    page = await Page.open();
+    const help = doc().querySelector("#rs-hud .rs-help");
+    expect(help.hidden).toBe(false);
+    gear().click();
+    expect(help.hidden).toBe(true);
+    expect(panel()).not.toBeNull();
+  });
+
   it("rebinds a key, uses it, frees the old one, and remembers", async () => {
     page = await Page.open({ daemonUp: false });
     gear().click();
@@ -769,9 +780,11 @@ describe("key bindings", () => {
     gear().click();
     expect(panel().querySelector(".rs-bindings-note").hidden).toBe(false);
     // The help panel still shows what the daemon is actually bound to.
-    expect(doc().querySelector("#rs-hud .rs-help").textContent).toContain(
-      "Num 0",
-    );
+    await fire("Escape", { key: "Escape" });
+    await page.send("help");
+    const help = doc().querySelector("#rs-hud .rs-help");
+    expect(help.hidden).toBe(false);
+    expect(help.textContent).toContain("Num 0");
   });
 });
 

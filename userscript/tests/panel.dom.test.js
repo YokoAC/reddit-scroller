@@ -8,12 +8,13 @@ const ROWS = [
   ["open", "open selected post"],
 ];
 
-function setup({ daemon = false } = {}) {
+function setup({ daemon = false, anchor } = {}) {
   const state = { bindings: fromPreset("numpad"), presets: [] };
   const panel = new BindingsPanel(document, {
     rows: ROWS,
     getBindings: () => state.bindings,
     isDaemonConnected: () => daemon,
+    anchor,
     onAssign: (command, code, key) => {
       state.bindings = assign(state.bindings, command, code, key);
     },
@@ -73,6 +74,26 @@ describe("BindingsPanel", () => {
     bindButton("toggle").click();
     panel.handleKey(key("NumpadEnter"));
     expect(bindButton("open").textContent).toMatch(/unbound/i);
+    // Flagged for styling; the word itself stays, so colour is not the only cue.
+    expect(bindButton("open").dataset.unbound).toBe("");
+    expect(bindButton("toggle").dataset.unbound).toBeUndefined();
+  });
+
+  it("opens just above the element it is anchored to", () => {
+    const hud = document.createElement("div");
+    hud.getBoundingClientRect = () => ({ top: 500 });
+    const { panel } = setup({ anchor: () => hud });
+    panel.show();
+    // 768 is jsdom's window height: the gap below the panel is everything
+    // from the anchor's top edge down, plus a small margin.
+    expect(root().style.bottom).toBe("276px");
+    expect(root().style.maxHeight).toBe("calc(100vh - 292px)");
+  });
+
+  it("sits in the corner when there is nothing to anchor to", () => {
+    const { panel } = setup({ anchor: () => null });
+    panel.show();
+    expect(root().style.bottom).toBe("16px");
   });
 
   it("cancels a capture on Escape without binding it", () => {

@@ -28,7 +28,7 @@ const FLASH_MS = 900;
 const HELP_AUTOSHOW_MS = 6000;
 
 const DEFAULTS = {
-  speed_min: 15,
+  speed_min: 5,
   speed_max: 600,
   speed_step: 15,
   default_speed: 90,
@@ -137,6 +137,7 @@ function boot() {
     // A persisted speed is a deliberate prior choice; the daemon's
     // default_speed must not override it once it arrives.
     seeded: typeof persisted?.speed === "number",
+    exact: persisted?.exact === true,
   });
 
   const selection = new Selection({
@@ -145,7 +146,14 @@ function boot() {
     focusLine: settings.focus_line,
   });
 
-  const hud = new Hud(document, { onSettings: () => toggleBindings() });
+  const hud = new Hud(document, {
+    onSettings: () => toggleBindings(),
+    onSpeed: (value) => {
+      engine.setExactSpeed(value);
+      saveSpeed();
+      paint();
+    },
+  });
   hud.mount();
 
   let mode = detectMode(window.location.pathname);
@@ -198,7 +206,7 @@ function boot() {
   // a page without re-running this script at all.
   function leavePaused() {
     engine.stop();
-    persist({ speed: engine.speed });
+    saveSpeed();
   }
 
   function showHelp(visible) {
@@ -210,8 +218,10 @@ function boot() {
     paint();
   }
 
+  // `exact` goes with it: a typed speed may sit below the minimum, and the
+  // next page has to know not to raise it.
   function saveSpeed() {
-    persist({ speed: engine.speed });
+    persist({ speed: engine.speed, exact: engine.exact });
   }
 
   function scrollToSelected() {
@@ -328,6 +338,10 @@ function boot() {
     onCommands: (commands) => {
       // A background tab should not steal commands aimed at the visible one.
       if (document.hidden) return;
+      // While a speed is being typed, numpad digits are text. The daemon's
+      // hook does not know about focus, so it still sends them as commands.
+      // The page's own keys need no such check: a focused field gets them.
+      if (hud.editing) return;
       commands.forEach(handleCommand);
     },
     onConnectionChange: (ok) => {

@@ -117,12 +117,85 @@ describe("ScrollEngine", () => {
     expect(engine.speed).toBe(15);
   });
 
-  it("adjusts speed by a delta, clamped", () => {
-    const { engine } = makeEngine({ speed: 100 });
+  it("steps to the next multiple of the step, clamped", () => {
+    const { engine } = makeEngine({ speed: 90 });
     engine.adjustSpeed(15);
-    expect(engine.speed).toBe(115);
+    expect(engine.speed).toBe(105);
+    engine.adjustSpeed(-15);
+    expect(engine.speed).toBe(90);
     engine.adjustSpeed(-1000);
     expect(engine.speed).toBe(15);
+  });
+
+  it("comes back onto the steps from a minimum that is not one", () => {
+    // Adding the step gave 5, 20, 35: 90 could never be reached again.
+    const { engine } = makeEngine({ speed: 15, min: 5 });
+    engine.adjustSpeed(-15);
+    expect(engine.speed).toBe(5);
+    engine.adjustSpeed(-15);
+    expect(engine.speed).toBe(5);
+    engine.adjustSpeed(15);
+    expect(engine.speed).toBe(15);
+    engine.adjustSpeed(15);
+    expect(engine.speed).toBe(30);
+  });
+
+  it("steps from a speed between two steps to the nearer one that way", () => {
+    const { engine } = makeEngine({ speed: 90, min: 5 });
+    engine.setExactSpeed(42);
+    engine.adjustSpeed(15);
+    expect(engine.speed).toBe(45);
+    engine.setExactSpeed(42);
+    engine.adjustSpeed(-15);
+    expect(engine.speed).toBe(30);
+  });
+
+  it("stops at the maximum", () => {
+    const { engine } = makeEngine({ speed: 600 });
+    engine.adjustSpeed(15);
+    expect(engine.speed).toBe(600);
+  });
+
+  it("takes an exact speed below the minimum, from 1 to the maximum", () => {
+    const { engine } = makeEngine({ min: 5 });
+    expect(engine.setExactSpeed(3)).toBe(3);
+    expect(engine.setExactSpeed(0)).toBe(1);
+    expect(engine.setExactSpeed(-20)).toBe(1);
+    expect(engine.setExactSpeed(9999)).toBe(600);
+    expect(engine.setExactSpeed(Number.NaN)).toBe(1);
+  });
+
+  it("keeps an exact speed when new limits arrive, apart from the maximum", () => {
+    // A daemon reconnect re-sends the limits; a typed 3 must survive it.
+    const { engine } = makeEngine({ min: 5 });
+    engine.setExactSpeed(3);
+    engine.setLimits(5, 600);
+    expect(engine.speed).toBe(3);
+    engine.setExactSpeed(500);
+    engine.setLimits(5, 400);
+    expect(engine.speed).toBe(400);
+  });
+
+  it("can be rebuilt with an exact speed, as after a navigation", () => {
+    // The page reloads when a thread opens; a typed 3 has to survive that.
+    const { engine } = makeEngine({ speed: 3, min: 5, exact: true });
+    expect(engine.speed).toBe(3);
+    expect(engine.exact).toBe(true);
+    expect(makeEngine({ speed: 3, min: 5 }).engine.speed).toBe(5);
+  });
+
+  it("stops being exact once a key steps it", () => {
+    const { engine } = makeEngine({ min: 5 });
+    engine.setExactSpeed(3);
+    engine.adjustSpeed(15);
+    expect(engine.exact).toBe(false);
+  });
+
+  it("treats an exact speed as deliberate, so a reconnect cannot replace it", () => {
+    const { engine } = makeEngine({ min: 5 });
+    engine.setExactSpeed(3);
+    engine.seedDefaultSpeed(200);
+    expect(engine.speed).toBe(3);
   });
 
   it("adopts new limits and re-clamps the current speed", () => {
@@ -200,10 +273,10 @@ describe("ScrollEngine direction", () => {
   });
 
   it("keeps speed positive when reversed, so the display stays sane", () => {
-    const { engine } = makeEngine({ speed: 100 });
+    const { engine } = makeEngine({ speed: 90 });
     engine.flipDirection();
     engine.adjustSpeed(15);
-    expect(engine.speed).toBe(115);
+    expect(engine.speed).toBe(105);
     expect(engine.direction).toBe(-1);
   });
 

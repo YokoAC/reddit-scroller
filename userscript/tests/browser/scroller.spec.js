@@ -307,6 +307,24 @@ test.describe("without a daemon", () => {
     expect(panel.y + panel.height).toBeLessThanOrEqual(hud.y);
   });
 
+  // A clickable span inside a panel that lets clicks through, swapped for a
+  // native number field: focus, typing and Enter are all the engine's.
+  test("types a speed into the HUD", async ({ page }, testInfo) => {
+    await preparePage(page, nextPort(testInfo));
+    await page.goto(FEED);
+    const speed = page.locator("#rs-hud .rs-speed");
+    await expect(speed).toHaveText("\u25bc 90 px/s");
+
+    await speed.click();
+    const field = page.locator("#rs-hud input.rs-speed-input");
+    await expect(field).toBeFocused();
+    await field.fill("3");
+    await field.press("Enter");
+
+    await expect(field).toHaveCount(0);
+    await expect(speed).toHaveText("\u25bc 3 px/s");
+  });
+
   test("still responds to the numpad keys", async ({ page }, testInfo) => {
     // A port nothing is listening on: the transport must fail and stay out of
     // the way rather than swallowing the keys.

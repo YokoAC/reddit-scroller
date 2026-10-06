@@ -10,7 +10,7 @@ def test_defaults_match_the_spec():
     assert cfg.port == 8765
     assert cfg.default_speed == 90.0
     assert cfg.speed_step == 15.0
-    assert cfg.speed_min == 15.0
+    assert cfg.speed_min == 5.0
     assert cfg.speed_max == 600.0
     assert cfg.focus_line == 0.25
 
@@ -120,7 +120,7 @@ def test_bindings_as_a_list_is_rejected(tmp_path):
 
 def test_default_speed_outside_the_range_is_rejected(tmp_path):
     path = tmp_path / "config.json"
-    path.write_text(json.dumps({"default_speed": 5}))
+    path.write_text(json.dumps({"default_speed": 2}))
     with pytest.raises(ConfigError, match="default_speed"):
         load_config(path)
 
@@ -155,7 +155,7 @@ def test_a_non_numeric_setting_is_rejected(tmp_path):
 
 def test_browser_settings_carry_only_what_the_page_needs():
     settings = Config.default().browser_settings()
-    assert settings["speed_min"] == 15.0
+    assert settings["speed_min"] == 5.0
     assert settings["speed_max"] == 600.0
     assert settings["speed_step"] == 15.0
     assert settings["default_speed"] == 90.0

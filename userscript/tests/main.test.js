@@ -488,8 +488,11 @@ describe("daemon settings are adopted", () => {
 
   it("applies the configured speed step", async () => {
     page = await Page.open({ settings: { ...SETTINGS, speed_step: 50 } });
+    // To the next multiple of the step, then on by whole steps.
     await page.send("faster");
-    expect(page.hud(".rs-speed")).toBe("▼ 140 px/s");
+    expect(page.hud(".rs-speed")).toBe("▼ 100 px/s");
+    await page.send("faster");
+    expect(page.hud(".rs-speed")).toBe("▼ 150 px/s");
   });
 });
 
@@ -630,6 +633,88 @@ describe("gallery keys", () => {
     for (const count of Object.values(counts)) {
       expect(count).toEqual({ prev: 0, next: 0 });
     }
+  });
+});
+
+describe("typing a speed", () => {
+  const doc = () => page.window.document;
+  const field = () => doc().querySelector("#rs-hud input.rs-speed-input");
+
+  async function type(value, key = "Enter") {
+    doc().querySelector("#rs-hud .rs-speed").click();
+    field().value = String(value);
+    field().dispatchEvent(
+      new page.window.KeyboardEvent("keydown", { key, bubbles: true }),
+    );
+    await page.settle();
+  }
+
+  it("sets the speed, and remembers it for the tab", async () => {
+    page = await Page.open({ daemonUp: false });
+    await type(40);
+    expect(page.hud(".rs-speed")).toBe("\u25bc 40 px/s");
+    expect(page.storedSpeed).toBe(40);
+  });
+
+  it("goes below the slowest key speed, down to 1", async () => {
+    page = await Page.open({ daemonUp: false });
+    await type(3);
+    expect(page.hud(".rs-speed")).toBe("\u25bc 3 px/s");
+    // The next key press moves back onto the steps.
+    await page.press("NumpadAdd");
+    expect(page.hud(".rs-speed")).toBe("\u25bc 15 px/s");
+  });
+
+  it("stops at the maximum", async () => {
+    page = await Page.open({ daemonUp: false });
+    await type(9999);
+    expect(page.hud(".rs-speed")).toBe("\u25bc 600 px/s");
+  });
+
+  it("keeps a typed speed below the minimum across a navigation", async () => {
+    page = await Page.open({
+      daemonUp: false,
+      session: JSON.stringify({ speed: 3, exact: true }),
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 3 px/s");
+  });
+
+  it("keeps a typed speed when the daemon's limits arrive", async () => {
+    page = await Page.open({
+      session: JSON.stringify({ speed: 3, exact: true }),
+    });
+    expect(page.hud(".rs-speed")).toBe("\u25bc 3 px/s");
+  });
+
+  it("ignores the daemon while typing, and for a moment after", async () => {
+    // The hook is global: digits typed on the numpad arrive as commands too,
+    // and the confirming Enter arrives as "open" just after the field closes.
+    page = await Page.open();
+    doc().querySelector("#rs-hud .rs-speed").click();
+    await page.send("toggle", "reverse");
+    expect(page.hud(".rs-status")).toBe("PAUSED");
+
+    field().value = "40";
+    field().dispatchEvent(
+      new page.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    await page.send("open");
+    expect(page.navigatedTo).toBeNull();
+    expect(page.hud(".rs-speed")).toBe("\u25bc 40 px/s");
+
+    await page.settle(600);
+    await page.send("toggle");
+    expect(page.hud(".rs-status")).toBe("SCROLLING");
+  });
+});
+
+describe("the slowest key speed", () => {
+  it("is 5 px/s without a daemon to say otherwise", async () => {
+    page = await Page.open({ daemonUp: false });
+    for (let i = 0; i < 8; i++) await page.press("NumpadSubtract");
+    expect(page.hud(".rs-speed")).toBe("\u25bc 5 px/s");
+    await page.press("NumpadAdd");
+    expect(page.hud(".rs-speed")).toBe("\u25bc 15 px/s");
   });
 });
 

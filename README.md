@@ -142,7 +142,7 @@ to "daemon" in the HUD means it went through.
 | Key | In the feed | In a thread |
 |---|---|---|
 | Numpad `0` | pause / resume scrolling | pause / resume scrolling |
-| Numpad `+` / `-` | speed up / down by 15 px/s | speed up / down by 15 px/s |
+| Numpad `+` / `-` | speed up / down in steps of 15 px/s | speed up / down in steps of 15 px/s |
 | Numpad `5` | flip scroll direction | flip scroll direction |
 | Numpad `8` / `2` | select previous / next post | scroll up / down a screen |
 | Numpad `4` / `6` | previous / next image in the selected post's gallery | previous / next image in the post's gallery |
@@ -151,9 +151,13 @@ to "daemon" in the HUD means it went through.
 | Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
 | Numpad `1` | switch the script off / on | switch the script off / on |
 
-**Hold `+` or `-`** and the speed ramps continuously — the whole 15–600 px/s range
+**Hold `+` or `-`** and the speed ramps continuously — the whole 5–600 px/s range
 takes about a second. The other keys deliberately fire once per press, so a finger
 resting on numpad `0` can't strobe the scroller.
+
+**Click the speed on the HUD to type an exact one**, from 1 px/s up to the maximum.
+The keys stop at 5 and move in steps; the next key press after a typed value goes
+back onto the steps.
 
 **Numpad `5` reverses direction** rather than changing speed; the HUD's arrow (`▼` or
 `▲`) always shows which way you're going, and the speed keeps its own setting.
@@ -161,9 +165,8 @@ resting on numpad `0` can't strobe the scroller.
 **Opening a thread always lands paused**, at the top, so you never scroll past the
 opening. Pressing `.` returns to the feed, also paused. Press `0` when you're ready.
 
-**A page never starts scrolling on its own.** Your speed is remembered within a tab,
-so opening a thread and coming back keeps it — but a new tab starts at
-`default_speed` and paused. No scroll state outlives the tab.
+**A page never starts scrolling on its own.** Your speed is remembered: each tab
+keeps its own, and a new tab starts paused at the speed you last set anywhere.
 
 **Numpad `1` switches the script off.** The HUD collapses to a single `OFF` line, the
 blue outline comes off the page, and every other key is ignored — for when you would
@@ -209,9 +212,9 @@ you leave out keeps its default.
 | Field | Default | Meaning |
 |---|---|---|
 | `port` | `8765` | Loopback port. Set the userscript's `rs-port` value to match. |
-| `default_speed` | `90` | Starting scroll speed, px/s. |
+| `default_speed` | `90` | Scroll speed, px/s, until you first set one yourself. |
 | `speed_step` | `15` | Change per `faster` / `slower` press. |
-| `speed_min` / `speed_max` | `15` / `600` | Speed limits. |
+| `speed_min` / `speed_max` | `5` / `600` | Speed limits for the keys. A typed speed may go below the minimum. |
 | `focus_line` | `0.25` | Where the "current post" line sits, as a fraction of screen height. |
 | `bindings` | see above | Command → key name. |
 

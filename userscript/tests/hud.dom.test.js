@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HUD_ID, Hud } from "../src/hud.js";
 
 const STATE = {
@@ -73,6 +73,101 @@ describe("Hud", () => {
     second.mount();
     document.querySelector(`#${HUD_ID} button.rs-gear`).click();
     expect(clicks).toBe(1);
+  });
+
+  describe("typing a speed", () => {
+    const speedText = () => document.querySelector(`#${HUD_ID} .rs-speed`);
+    const field = () =>
+      document.querySelector(`#${HUD_ID} input.rs-speed-input`);
+    const press = (key) =>
+      field().dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      );
+
+    function open() {
+      const typed = [];
+      const hud = new Hud(document, { onSpeed: (value) => typed.push(value) });
+      hud.mount();
+      hud.render(STATE);
+      speedText().click();
+      return { hud, typed };
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it("turns the speed into a number field holding the current value", () => {
+      open();
+      expect(field().type).toBe("number");
+      expect(field().value).toBe("90");
+      expect(field().getAttribute("aria-label")).toMatch(/speed/i);
+      expect(speedText().hidden).toBe(true);
+      expect(document.activeElement).toBe(field());
+    });
+
+    it("reports the typed value on Enter and puts the text back", () => {
+      const { typed } = open();
+      field().value = "7";
+      press("Enter");
+      expect(typed).toEqual([7]);
+      expect(field()).toBeNull();
+      expect(speedText().hidden).toBe(false);
+    });
+
+    it("reports it when the field loses focus", () => {
+      const { typed } = open();
+      field().value = "250";
+      field().dispatchEvent(new FocusEvent("blur"));
+      expect(typed).toEqual([250]);
+      expect(field()).toBeNull();
+    });
+
+    it("drops the edit on Escape", () => {
+      const { typed } = open();
+      field().value = "7";
+      press("Escape");
+      expect(typed).toEqual([]);
+      expect(field()).toBeNull();
+    });
+
+    it("ignores anything that is not a speed", () => {
+      for (const junk of ["", "0", "-4", "0.2"]) {
+        const { typed } = open();
+        field().value = junk;
+        press("Enter");
+        expect(typed, JSON.stringify(junk)).toEqual([]);
+        document.body.innerHTML = "";
+      }
+    });
+
+    it("keeps its keys to itself", () => {
+      // A digit typed here must not reach a page shortcut on the same key.
+      open();
+      let reached = 0;
+      document.addEventListener("keydown", () => {
+        reached++;
+      });
+      press("5");
+      expect(reached).toBe(0);
+    });
+
+    it("counts as editing while open and for a moment after", () => {
+      // The daemon delivers the confirming Enter as a command slightly later.
+      vi.useFakeTimers();
+      const { hud } = open();
+      expect(hud.editing).toBe(true);
+      press("Enter");
+      expect(hud.editing).toBe(true);
+      vi.advanceTimersByTime(499);
+      expect(hud.editing).toBe(true);
+      vi.advanceTimersByTime(2);
+      expect(hud.editing).toBe(false);
+    });
+
+    it("is not editing before anything was typed", () => {
+      const hud = new Hud(document);
+      hud.mount();
+      expect(hud.editing).toBe(false);
+    });
   });
 
   it("mounting twice does not produce two panels", () => {

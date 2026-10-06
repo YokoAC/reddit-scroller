@@ -4,6 +4,10 @@
 // does not lurch when it comes back into view.
 export const MAX_FRAME_SECONDS = 0.1;
 
+// The floor for a speed typed by hand. The configured minimum bounds the
+// keys; below one pixel a second there is nothing left to scroll.
+export const EXACT_MIN = 1;
+
 export function clampSpeed(speed, min, max) {
   if (Number.isNaN(speed)) return min;
   return Math.min(max, Math.max(min, speed));
@@ -22,6 +26,8 @@ export class ScrollEngine {
     // value persisted from a previous session) rather than a placeholder
     // built-in default. See seedDefaultSpeed().
     seeded = false,
+    // Whether `speed` was typed by hand, and so may sit below `min`.
+    exact = false,
   }) {
     this._scrollBy = scrollBy;
     this._requestFrame = requestFrame;
@@ -29,8 +35,9 @@ export class ScrollEngine {
     this._min = min;
     this._max = max;
     this._step = step;
-    this._speed = clampSpeed(speed, min, max);
+    this._speed = clampSpeed(speed, exact ? EXACT_MIN : min, max);
     this._seeded = seeded;
+    this._exact = exact;
     this._direction = 1;
     this._running = false;
     this._frame = null;
@@ -44,6 +51,11 @@ export class ScrollEngine {
 
   get speed() {
     return this._speed;
+  }
+
+  /** Whether the speed was typed by hand rather than reached with the keys. */
+  get exact() {
+    return this._exact;
   }
 
   /** +1 scrolls down the page, -1 scrolls back up. Speed stays positive. */
@@ -64,16 +76,40 @@ export class ScrollEngine {
   }
 
   setSpeed(pxPerSecond) {
+    this._exact = false;
     this._speed = clampSpeed(pxPerSecond, this._min, this._max);
     this._remainder = 0;
     return this._speed;
   }
 
+  /**
+   * A speed chosen by hand: anything from EXACT_MIN to the maximum. The
+   * minimum is for the keys, so it does not apply, and later limits from the
+   * daemon will not raise it.
+   */
+  setExactSpeed(pxPerSecond) {
+    this._seeded = true;
+    this._exact = true;
+    this._speed = clampSpeed(pxPerSecond, EXACT_MIN, this._max);
+    this._remainder = 0;
+    return this._speed;
+  }
+
+  /**
+   * One press of a speed key: move to the next multiple of |delta| in its
+   * direction. Not `speed + delta` -- with a minimum that is not a multiple
+   * of the step, that walks off the steps for good (5, 20, 35, ...).
+   */
   adjustSpeed(delta) {
     // A deliberate user adjustment counts as seeding: it must not be undone
     // later by seedDefaultSpeed(), e.g. across a daemon reconnect.
     this._seeded = true;
-    return this.setSpeed(this._speed + delta);
+    const step = Math.abs(delta);
+    const next =
+      delta > 0
+        ? Math.floor(this._speed / step) * step + step
+        : Math.ceil(this._speed / step) * step - step;
+    return this.setSpeed(next);
   }
 
   /**
@@ -93,7 +129,9 @@ export class ScrollEngine {
   setLimits(min, max) {
     this._min = min;
     this._max = max;
-    return this.setSpeed(this._speed);
+    return this._exact
+      ? this.setExactSpeed(this._speed)
+      : this.setSpeed(this._speed);
   }
 
   start() {

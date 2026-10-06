@@ -8,6 +8,11 @@ export const BAR_CELLS = 12;
 
 const STYLE_ID = "rs-style";
 
+// How long after the speed field closes the HUD still counts as editing. The
+// daemon's hook is global, so the Enter that confirms a value also arrives as
+// a command, a few tens of milliseconds later over the long poll.
+const EDIT_GRACE_MS = 500;
+
 const CSS = `
 #${HUD_ID} {
   position: fixed;
@@ -56,6 +61,18 @@ const CSS = `
   opacity: 0.6;
 }
 #${HUD_ID} .rs-gear:hover, #${HUD_ID} .rs-gear:focus-visible { opacity: 1; }
+#${HUD_ID} .rs-speed { pointer-events: auto; cursor: text; }
+#${HUD_ID} .rs-speed:hover { text-decoration: underline dotted; }
+#${HUD_ID} .rs-speed-input {
+  pointer-events: auto;
+  width: 96px;
+  padding: 0 4px;
+  border: 1px solid #58a6ff;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+}
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -196,11 +213,22 @@ export function formatHud(state) {
 }
 
 export class Hud {
-  constructor(doc, { onSettings } = {}) {
+  constructor(doc, { onSettings, onSpeed } = {}) {
     this._doc = doc;
     this._onSettings = onSettings;
+    this._onSpeed = onSpeed;
     this._root = null;
     this._nodes = null;
+    this._last = null;
+    this._input = null;
+    this._editEndedAt = Number.NEGATIVE_INFINITY;
+  }
+
+  /** Whether a speed is being typed, or was until a moment ago. */
+  get editing() {
+    return (
+      this._input !== null || Date.now() - this._editEndedAt < EDIT_GRACE_MS
+    );
   }
 
   mount() {
@@ -250,6 +278,48 @@ export class Hud {
     root
       .querySelector(".rs-gear")
       ?.addEventListener("click", () => this._onSettings?.());
+    root
+      .querySelector(".rs-speed")
+      .addEventListener("click", () => this._editSpeed());
+  }
+
+  /** Swap the speed text for a number field until Enter, Escape or blur. */
+  _editSpeed() {
+    if (this._input || !this._last) return;
+    const text = this._nodes.speed;
+    const input = this._doc.createElement("input");
+    input.type = "number";
+    input.className = "rs-speed-input";
+    input.min = "1";
+    input.max = String(this._last.speedMax);
+    input.value = String(Math.round(this._last.speed));
+    input.setAttribute("aria-label", "Scroll speed in pixels per second");
+
+    const finish = (commit) => {
+      // Removing a focused field fires blur, which would finish it twice.
+      if (this._input !== input) return;
+      this._input = null;
+      this._editEndedAt = Date.now();
+      const value = Math.round(Number(input.value));
+      input.remove();
+      text.hidden = false;
+      if (commit && input.value.trim() !== "" && value >= 1) {
+        this._onSpeed?.(value);
+      }
+    };
+    input.addEventListener("keydown", (event) => {
+      // A digit typed here is not a page shortcut.
+      event.stopPropagation();
+      if (event.key === "Enter") finish(true);
+      else if (event.key === "Escape") finish(false);
+    });
+    input.addEventListener("blur", () => finish(true));
+
+    text.hidden = true;
+    text.after(input);
+    this._input = input;
+    input.focus();
+    input.select();
   }
 
   _collect(root) {
@@ -268,6 +338,7 @@ export class Hud {
 
   render(state) {
     if (!this._nodes) return;
+    this._last = state;
     const view = formatHud(state);
     const n = this._nodes;
     this._root.classList.toggle("rs-collapsed", view.collapsed);

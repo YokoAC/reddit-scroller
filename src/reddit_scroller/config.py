@@ -82,7 +82,7 @@ class Config:
     port: int = 8765
     default_speed: float = 90.0
     speed_step: float = 15.0
-    speed_min: float = 15.0
+    speed_min: float = 5.0
     speed_max: float = 600.0
     focus_line: float = 0.25
     bindings: dict[str, KeyBinding] = field(default_factory=dict)

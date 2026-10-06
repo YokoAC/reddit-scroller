@@ -2,7 +2,7 @@
   "port": 8765,
   "default_speed": 90,
   "speed_step": 15,
-  "speed_min": 15,
+  "speed_min": 5,
   "speed_max": 600,
   "focus_line": 0.25,
   "bindings": {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.3
+// @version      0.1.4
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT
@@ -309,6 +309,7 @@
   var HUD_ID = "rs-hud";
   var BAR_CELLS = 12;
   var STYLE_ID = "rs-style";
+  var EDIT_GRACE_MS = 500;
   var CSS = `
 #${HUD_ID} {
   position: fixed;
@@ -357,6 +358,18 @@
   opacity: 0.6;
 }
 #${HUD_ID} .rs-gear:hover, #${HUD_ID} .rs-gear:focus-visible { opacity: 1; }
+#${HUD_ID} .rs-speed { pointer-events: auto; cursor: text; }
+#${HUD_ID} .rs-speed:hover { text-decoration: underline dotted; }
+#${HUD_ID} .rs-speed-input {
+  pointer-events: auto;
+  width: 96px;
+  padding: 0 4px;
+  border: 1px solid #58a6ff;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+}
 #${HUD_ID} .rs-rule {
   height: 1px;
   margin: 9px 0;
@@ -477,11 +490,19 @@
     };
   }
   var Hud = class {
-    constructor(doc, { onSettings } = {}) {
+    constructor(doc, { onSettings, onSpeed } = {}) {
       this._doc = doc;
       this._onSettings = onSettings;
+      this._onSpeed = onSpeed;
       this._root = null;
       this._nodes = null;
+      this._last = null;
+      this._input = null;
+      this._editEndedAt = Number.NEGATIVE_INFINITY;
+    }
+    /** Whether a speed is being typed, or was until a moment ago. */
+    get editing() {
+      return this._input !== null || Date.now() - this._editEndedAt < EDIT_GRACE_MS;
     }
     mount() {
       const existing = this._doc.getElementById(HUD_ID);
@@ -523,6 +544,41 @@
     }
     _wire(root) {
       root.querySelector(".rs-gear")?.addEventListener("click", () => this._onSettings?.());
+      root.querySelector(".rs-speed").addEventListener("click", () => this._editSpeed());
+    }
+    /** Swap the speed text for a number field until Enter, Escape or blur. */
+    _editSpeed() {
+      if (this._input || !this._last) return;
+      const text = this._nodes.speed;
+      const input = this._doc.createElement("input");
+      input.type = "number";
+      input.className = "rs-speed-input";
+      input.min = "1";
+      input.max = String(this._last.speedMax);
+      input.value = String(Math.round(this._last.speed));
+      input.setAttribute("aria-label", "Scroll speed in pixels per second");
+      const finish = (commit) => {
+        if (this._input !== input) return;
+        this._input = null;
+        this._editEndedAt = Date.now();
+        const value = Math.round(Number(input.value));
+        input.remove();
+        text.hidden = false;
+        if (commit && input.value.trim() !== "" && value >= 1) {
+          this._onSpeed?.(value);
+        }
+      };
+      input.addEventListener("keydown", (event) => {
+        event.stopPropagation();
+        if (event.key === "Enter") finish(true);
+        else if (event.key === "Escape") finish(false);
+      });
+      input.addEventListener("blur", () => finish(true));
+      text.hidden = true;
+      text.after(input);
+      this._input = input;
+      input.focus();
+      input.select();
     }
     _collect(root) {
       return {
@@ -539,6 +595,7 @@
     }
     render(state) {
       if (!this._nodes) return;
+      this._last = state;
       const view = formatHud(state);
       const n = this._nodes;
       this._root.classList.toggle("rs-collapsed", view.collapsed);
@@ -805,6 +862,7 @@
 
   // src/scroll.js
   var MAX_FRAME_SECONDS = 0.1;
+  var EXACT_MIN = 1;
   function clampSpeed(speed, min, max) {
     if (Number.isNaN(speed)) return min;
     return Math.min(max, Math.max(min, speed));
@@ -821,7 +879,9 @@
       // Whether `speed` already reflects a deliberate choice (typically a
       // value persisted from a previous session) rather than a placeholder
       // built-in default. See seedDefaultSpeed().
-      seeded = false
+      seeded = false,
+      // Whether `speed` was typed by hand, and so may sit below `min`.
+      exact = false
     }) {
       this._scrollBy = scrollBy;
       this._requestFrame = requestFrame;
@@ -829,8 +889,9 @@
       this._min = min;
       this._max = max;
       this._step = step;
-      this._speed = clampSpeed(speed, min, max);
+      this._speed = clampSpeed(speed, exact ? EXACT_MIN : min, max);
       this._seeded = seeded;
+      this._exact = exact;
       this._direction = 1;
       this._running = false;
       this._frame = null;
@@ -842,6 +903,10 @@
     }
     get speed() {
       return this._speed;
+    }
+    /** Whether the speed was typed by hand rather than reached with the keys. */
+    get exact() {
+      return this._exact;
     }
     /** +1 scrolls down the page, -1 scrolls back up. Speed stays positive. */
     get direction() {
@@ -856,13 +921,33 @@
       return this._step;
     }
     setSpeed(pxPerSecond) {
+      this._exact = false;
       this._speed = clampSpeed(pxPerSecond, this._min, this._max);
       this._remainder = 0;
       return this._speed;
     }
+    /**
+     * A speed chosen by hand: anything from EXACT_MIN to the maximum. The
+     * minimum is for the keys, so it does not apply, and later limits from the
+     * daemon will not raise it.
+     */
+    setExactSpeed(pxPerSecond) {
+      this._seeded = true;
+      this._exact = true;
+      this._speed = clampSpeed(pxPerSecond, EXACT_MIN, this._max);
+      this._remainder = 0;
+      return this._speed;
+    }
+    /**
+     * One press of a speed key: move to the next multiple of |delta| in its
+     * direction. Not `speed + delta` -- with a minimum that is not a multiple
+     * of the step, that walks off the steps for good (5, 20, 35, ...).
+     */
     adjustSpeed(delta) {
       this._seeded = true;
-      return this.setSpeed(this._speed + delta);
+      const step = Math.abs(delta);
+      const next = delta > 0 ? Math.floor(this._speed / step) * step + step : Math.ceil(this._speed / step) * step - step;
+      return this.setSpeed(next);
     }
     /**
      * Adopt a daemon-configured default speed — but only the first time this
@@ -880,7 +965,7 @@
     setLimits(min, max) {
       this._min = min;
       this._max = max;
-      return this.setSpeed(this._speed);
+      return this._exact ? this.setExactSpeed(this._speed) : this.setSpeed(this._speed);
     }
     start() {
       if (this._running) return true;
@@ -1022,21 +1107,32 @@
   var PORT_KEY = "rs-port";
   var STANDBY_KEY = "rs-standby";
   var BINDINGS_KEY = "rs-bindings";
+  var SPEED_KEY = "rs-speed";
   var STATE_KEY = "rs-scroll-state";
   var FLASH_MS = 900;
   var HELP_AUTOSHOW_MS = 6e3;
   var DEFAULTS = {
-    speed_min: 15,
+    speed_min: 5,
     speed_max: 600,
     speed_step: 15,
     default_speed: 90,
     focus_line: 0.25
   };
+  function asSpeed(value) {
+    const speed = typeof value === "number" ? value : value?.speed;
+    if (typeof speed !== "number" || !Number.isFinite(speed) || speed <= 0) {
+      return null;
+    }
+    return { speed, exact: value?.exact === true };
+  }
   function loadPersisted() {
     try {
-      const raw = sessionStorage.getItem(STATE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
+      const own = asSpeed(JSON.parse(sessionStorage.getItem(STATE_KEY)));
+      if (own) return own;
+    } catch {
+    }
+    try {
+      return asSpeed(GM_getValue(SPEED_KEY));
     } catch {
       return null;
     }
@@ -1044,6 +1140,12 @@
   function persist(state) {
     try {
       sessionStorage.setItem(STATE_KEY, JSON.stringify(state));
+    } catch {
+    }
+  }
+  function persistChosen(state) {
+    try {
+      GM_setValue(SPEED_KEY, state);
     } catch {
     }
   }
@@ -1103,14 +1205,22 @@
       step: settings.speed_step,
       // A persisted speed is a deliberate prior choice; the daemon's
       // default_speed must not override it once it arrives.
-      seeded: typeof persisted?.speed === "number"
+      seeded: typeof persisted?.speed === "number",
+      exact: persisted?.exact === true
     });
     const selection = new Selection({
       root: document,
       getViewportHeight: () => window.innerHeight,
       focusLine: settings.focus_line
     });
-    const hud = new Hud(document, { onSettings: () => toggleBindings() });
+    const hud = new Hud(document, {
+      onSettings: () => toggleBindings(),
+      onSpeed: (value) => {
+        engine.setExactSpeed(value);
+        rememberSpeed();
+        paint();
+      }
+    });
     hud.mount();
     let mode = detectMode(window.location.pathname);
     let standby = loadStandby();
@@ -1154,7 +1264,7 @@
     }
     function leavePaused() {
       engine.stop();
-      persist({ speed: engine.speed });
+      saveSpeed();
     }
     function showHelp(visible) {
       helpVisible = visible;
@@ -1165,7 +1275,11 @@
       paint();
     }
     function saveSpeed() {
-      persist({ speed: engine.speed });
+      persist({ speed: engine.speed, exact: engine.exact });
+    }
+    function rememberSpeed() {
+      saveSpeed();
+      persistChosen({ speed: engine.speed, exact: engine.exact });
     }
     function scrollToSelected() {
       const element = selection.selectedElement;
@@ -1184,11 +1298,11 @@
       },
       speedUp() {
         engine.adjustSpeed(settings.speed_step);
-        saveSpeed();
+        rememberSpeed();
       },
       speedDown() {
         engine.adjustSpeed(-settings.speed_step);
-        saveSpeed();
+        rememberSpeed();
       },
       openSelected() {
         const post = selection.selected;
@@ -1266,6 +1380,7 @@
       sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
       onCommands: (commands) => {
         if (document.hidden) return;
+        if (hud.editing) return;
         commands.forEach(handleCommand);
       },
       onConnectionChange: (ok) => {

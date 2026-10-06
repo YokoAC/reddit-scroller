@@ -36,18 +36,29 @@ def clear_instances():
     FakeListener.instances.clear()
 
 
+async def started(task):
+    """Wait until run() has bound its port and started its listener.
+
+    A condition, not a fixed sleep: 0.2s was not always enough on a slow CI
+    runner, and the test then failed before the daemon was up.
+    """
+    async with asyncio.timeout(5):
+        while not (FakeListener.instances and FakeListener.instances[0].started):
+            if task.done():
+                task.result()  # a startup error, rather than a bare timeout
+            await asyncio.sleep(0.01)
+    return FakeListener.instances[0]
+
+
 async def test_a_key_press_reaches_a_polling_http_client():
     # Port 0 is not usable here because the client needs to know the port, so
     # pick one well away from the default to avoid clashing with a live daemon.
     config = replace(Config.default(), port=8799)
 
     task = asyncio.create_task(run(config, listener_factory=FakeListener))
-    await asyncio.sleep(0.2)
 
     try:
-        assert FakeListener.instances, "the listener was never constructed"
-        listener = FakeListener.instances[0]
-        assert listener.started is True
+        listener = await started(task)
 
         async with aiohttp.ClientSession() as session:
             async with session.get("http://127.0.0.1:8799/health") as resp:
@@ -73,7 +84,7 @@ async def test_the_port_being_busy_raises_a_clear_error():
     config = replace(Config.default(), port=8798)
 
     first = asyncio.create_task(run(config, listener_factory=FakeListener))
-    await asyncio.sleep(0.2)
+    await started(first)
     try:
         with pytest.raises(OSError):
             await asyncio.wait_for(
@@ -108,7 +119,7 @@ async def test_cleanup_runs_when_listener_stop_raises(monkeypatch):
 
     config = replace(Config.default(), port=8797)
     task = asyncio.create_task(run(config, listener_factory=RaisingListener))
-    await asyncio.sleep(0.2)
+    await started(task)
 
     # Cancelling stands in for Ctrl+C: it triggers the shutdown `finally`.
     # listener.stop()'s RuntimeError takes over from the CancelledError as it

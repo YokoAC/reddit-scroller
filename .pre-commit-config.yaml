@@ -1,0 +1,30 @@
+# Fast checks only, run with the project's own pinned tools. Tests and mypy
+# stay in CI: a slow hook gets skipped with --no-verify.
+# Setup: `uv sync`, `npm ci` in userscript/, then `uv run pre-commit install`.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run ruff format --check
+        language: system
+        types: [python]
+      - id: biome
+        name: biome check (userscript)
+        entry: npm --prefix userscript run lint
+        language: system
+        files: ^userscript/.*\.(js|mjs|json)$
+        pass_filenames: false
+      # Rebuilds the bundle. If dist/ was stale, the rebuild changes it, and
+      # pre-commit stops the commit: add the rebuilt file and commit again.
+      - id: bundle
+        name: userscript bundle matches src
+        entry: npm --prefix userscript run build
+        language: system
+        files: ^userscript/(src/|build\.mjs$|build-target\.js$|package\.json$)
+        pass_filenames: false

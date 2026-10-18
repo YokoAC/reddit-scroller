@@ -269,16 +269,6 @@ appear but the page does not react, the problem is the transport.
 
 ## Development
 
-Once per clone, after `uv sync` and `npm ci` in `userscript/`:
-
-```bash
-uv run pre-commit install
-```
-
-Commits then run the fast checks: ruff, Biome, and a rebuild of the userscript
-bundle. If the rebuild changes `dist/`, the commit stops; add the rebuilt file
-and commit again. Tests and mypy stay in CI.
-
 ```bash
 uv run ruff check . && uv run ruff format --check .   # lint the daemon
 uv run mypy                          # strict type-check the daemon

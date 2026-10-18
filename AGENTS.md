@@ -22,6 +22,8 @@ Userscript auto-scrolls Reddit by numpad + HUD; optional Windows Python daemon d
 - Daemon: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest`
 - Userscript, in `userscript/`: `npm run lint && npm run test:all`
 
+Hooks: `uv run pre-commit install` once per clone.
+
 ## Rules
 
 - Never start the daemon (`python -m reddit_scroller`) unasked: real global keyboard hook. Tests use fakes or `tests/support/`.

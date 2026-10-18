@@ -22,7 +22,7 @@ cd userscript && npm run lint && npm test && npm run test:integration && npm run
 
 ## Rules
 
-- Never run the daemon (`python -m reddit_scroller`): real global keyboard hook. Tests use fakes.
+- Never start the daemon (`python -m reddit_scroller`) unasked: real global keyboard hook. Tests use fakes or `tests/support/`.
 - Server binds `127.0.0.1` only. No CORS, no other host.
 - Hook never suppresses (`suppress=False`).
 - Userscript change → `npm run build`, commit `dist/`. CI fails on stale bundle.
@@ -30,4 +30,3 @@ cd userscript && npm run lint && npm test && npm run test:integration && npm run
 - Never change `@namespace`: breaks every install.
 - Test first. Coverage thresholds fail build.
 - Design change → update `docs/architecture.md` first.
-- `main` protected: branch + PR.

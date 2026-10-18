@@ -1,24 +1,26 @@
-# AGENTS.md
+# Reddit-Scroller
 
 Userscript auto-scrolls Reddit by numpad + HUD; optional Windows Python daemon delivers global hotkeys over `127.0.0.1`.
 
 ## Layout
 
-```
-src/reddit_scroller/  daemon: keyboard hook, aiohttp loopback server, config, key table
-tests/                daemon tests; support/ = hookless daemon for JS suites
-userscript/src/       userscript modules; main.js wires them
-userscript/dist/      built bundle, committed, what users install
-userscript/tests/     unit + dom; integration/ = real daemon; browser/ = Playwright
-docs/architecture.md  why things are as they are — read before design changes
+```text
+├── src/reddit_scroller/   daemon: keyboard hook, loopback server, config, key table
+├── tests/                 daemon tests
+│   └── support/           hookless daemon for the JS suites
+├── userscript/
+│   ├── src/               modules; main.js wires them
+│   ├── dist/              built bundle, committed, what users install
+│   └── tests/             unit + dom
+│       ├── integration/   against the real daemon
+│       └── browser/       Playwright, Firefox + Chromium
+└── docs/architecture.md   why things are as they are; read before design changes
 ```
 
 ## Check
 
-```
-uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
-cd userscript && npm run lint && npm test && npm run test:integration && npm run test:browser
-```
+- Daemon: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest`
+- Userscript, in `userscript/`: `npm run lint && npm run test:all`
 
 ## Rules
 

@@ -183,7 +183,8 @@ jobs:
   browsers:
     # Same spec, same daemon, both engines: an engine-specific behaviour fails
     # here, not in someone's feed.
-    #
+    name: browsers (Firefox + Chromium)
+    runs-on: ubuntu-latest
     # Timeouts are per step; the job limit is only a backstop above their sum.
     # A job killed by its own limit is cancelled and skips the trace upload,
     # losing the evidence exactly when it is needed.

@@ -16,6 +16,9 @@ as a full-screen game, has focus.
   <img src="docs/screenshot.png" alt="A Reddit feed scrolling: the post in focus outlined in blue, and the HUD bottom-right showing the state, speed and that post's title">
 </div>
 
+In motion: scrolling, picking and opening a post, and going back, all from the
+numpad while a game keeps focus.
+
 https://github.com/user-attachments/assets/515b52ea-ceb3-4d2f-9b2a-6ce269a27180
 
 Two halves:

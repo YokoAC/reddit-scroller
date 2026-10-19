@@ -285,6 +285,10 @@ Playwright's Firefox, an unsigned patched build, does not start on every Windows
 machine: some refuse to load its private `mozglue` assembly. There, run
 `npm run test:browser -- --project=chromium`; CI runs both engines on Linux.
 
+`npm run demo` re-records the demo video into `userscript/demo/out/demo.mp4`:
+the real bundle against the hookless daemon, beside a stand-in game. It needs
+the venv and Chromium as above; ffmpeg is fetched temporarily through uv.
+
 CI runs all four suites on every pull request and push to `main`: the daemon on
 Windows, for its scan codes, the rest on Linux.
 

@@ -156,10 +156,10 @@ class Daemon {
   }
 }
 
-export function startDaemon(port) {
+export function startDaemon(port, pollTimeout = POLL_TIMEOUT) {
   const child = spawn(
     PYTHON,
-    ["-m", "tests.support.integration_daemon", String(port), POLL_TIMEOUT],
+    ["-m", "tests.support.integration_daemon", String(port), pollTimeout],
     { cwd: REPO_ROOT, stdio: ["pipe", "pipe", "pipe"] },
   );
 

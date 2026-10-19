@@ -10,6 +10,7 @@
     "test:browser": "playwright test",
     "test:all": "npm test && npm run test:integration && npm run test:browser",
     "coverage": "vitest run --coverage",
+    "demo": "node demo/record.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write ."
   },

@@ -26,3 +26,4 @@ coverage.txt
 userscript/coverage/
 userscript/test-results/
 userscript/playwright-report/
+userscript/demo/out/

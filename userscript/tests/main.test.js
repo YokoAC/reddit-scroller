@@ -1,17 +1,12 @@
 /**
- * Tests for main.js -- the assembly layer.
+ * Tests for main.js, the assembly layer. The modules it wires are well covered
+ * and almost defect-free; main.js had no tests and shipped four of the bugs
+ * that reached the user: an empty help panel, every keypress firing twice, a
+ * page resuming scrolling on its own, and a default_speed that never applied.
  *
- * Every module main.js wires together is thoroughly covered and has
- * produced almost no defects. main.js had none, and shipped four of the bugs
- * that reached the user: an empty help panel, every keypress firing twice,
- * a page that resumed scrolling on its own, and a configured default_speed
- * that never applied. This file exists to close that gap.
- *
- * main.js exports nothing and runs on import, so it is exercised the only way
- * it can be: bundled from source with esbuild, then evaluated inside a fresh
- * jsdom window per test with the browser and userscript-manager APIs stubbed.
- * Bundling from src rather than reading dist/ means this can never pass
- * against a stale build.
+ * main.js exports nothing and runs on import, so each test bundles it from src
+ * with esbuild (never a stale dist/) and evaluates it in a fresh jsdom window,
+ * with the browser and userscript-manager APIs stubbed.
  */
 
 import { build } from "esbuild";
@@ -33,11 +28,10 @@ beforeAll(async () => {
   BUNDLE = result.outputFiles[0].text;
 }, 30000);
 
-// Permalinks are hash-form on purpose. jsdom's window.location is unforgeable
-// -- it cannot be replaced or spied on -- and jsdom refuses real navigation.
-// It does implement hash changes, so a hash permalink makes the destination
-// observable. The code under test only assigns the attribute's value to
-// location.href, so the path it exercises is identical.
+// Permalinks are hash-form on purpose: jsdom's window.location cannot be
+// replaced or spied on and refuses real navigation, but does implement hash
+// changes. The code only assigns the attribute to location.href, so the path
+// exercised is identical.
 const POSTS = [
   { permalink: "#/r/a/comments/1/one/", title: "First", sub: "r/a", score: 10 },
   {
@@ -115,9 +109,9 @@ class Page {
     daemonKeys = false,
   } = {}) {
     const page = new Page();
-    // runScripts: "outside-only" gives the window a real eval running in its
-    // own context; without it window.eval is Node's and the bundle sees no DOM.
-    // pretendToBeVisual supplies requestAnimationFrame.
+    // runScripts "outside-only" gives the window its own eval (else window.eval is
+    // Node's and the bundle sees no DOM); pretendToBeVisual adds
+    // requestAnimationFrame.
     const dom = new JSDOM(feedHtml(), {
       url,
       pretendToBeVisual: true,
@@ -194,10 +188,9 @@ class Page {
         return respond(200, JSON.stringify({ ok: true, unsupported }));
       }
       if (opts.url.includes("/events")) {
-        // Model the real long poll: hold briefly for a command, then return
-        // an empty list. Holding forever would mean the transport never
-        // reported a successful poll, so the page would never see the
-        // connection come up or adopt any settings.
+        // Model the real long poll: hold briefly, then return an empty list. Held
+        // forever, no poll would succeed, and the page would never see the connection
+        // come up or adopt any settings.
         const startedAt = Date.now();
         const deliver = () => {
           const events = page._pending.splice(0).map((command) => ({
@@ -223,9 +216,8 @@ class Page {
     };
 
     window.eval(BUNDLE);
-    // Wait on observable state rather than a fixed sleep: the boot sequence is
-    // /health, then a poll that holds, then the connection edge and the
-    // settings adoption that follows it. A fixed delay races all of that.
+    // Wait on observable state, not a fixed sleep, which races the boot: /health,
+    // a holding poll, the connection edge and the settings adoption after it.
     await page.waitForDaemon(daemonUp);
     return page;
   }
@@ -1299,10 +1291,9 @@ describe("a feed with no posts", () => {
     page.window.document.querySelectorAll("shreddit-post").forEach((el) => {
       el.remove();
     });
-    // Let the page notice they are gone. Without this the selection still
-    // holds the last post it saw, and opening that permalink is correct --
-    // Reddit recycles feed nodes, so a vanished element does not mean a
-    // vanished post.
+    // Let the page notice they are gone. Otherwise the selection keeps the last
+    // post, and opening it would be correct: Reddit recycles feed nodes, so a
+    // vanished element is not a vanished post.
     page.window.dispatchEvent(new page.window.Event("scroll"));
     await page.settle();
 

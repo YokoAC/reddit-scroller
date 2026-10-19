@@ -50,9 +50,8 @@ async def test_events_times_out_with_an_empty_list_and_an_unchanged_cursor(clien
 
 
 async def test_events_returns_as_soon_as_a_command_arrives(aiohttp_client, bus):
-    # Build a client with a long poll timeout rather than mutating the shared
-    # one after it has started: aiohttp deprecates changing a running app, and
-    # a test that has to reach inside a started app to work is testing the
+    # A fresh client with a long poll timeout, not the shared one mutated after
+    # start: aiohttp deprecates changing a running app, and that would test the
     # fixture as much as the server.
     app = create_app(bus, Config.default().browser_settings(), poll_timeout=5.0)
     client = await aiohttp_client(app)
@@ -101,10 +100,9 @@ async def test_an_invalid_json_state_body_is_rejected(client):
 
 
 async def test_a_cursor_ahead_of_the_bus_resyncs_instead_of_stalling(client, bus):
-    # A restarted daemon starts its sequence at 0 again while a long-lived
-    # browser tab still holds a cursor from the previous session. Without a
-    # resync the tab silently ignores every command until the new sequence
-    # catches up to its stale cursor.
+    # A restarted daemon begins again at 0 while a long-lived tab holds a cursor
+    # from before. Without a resync the tab ignores every command until the new
+    # sequence catches up.
     bus.append("toggle")
     body = await (await client.get("/events", params={"cursor": "99"})).json()
     assert body == {"cursor": 1, "events": []}
@@ -116,8 +114,8 @@ async def test_a_cursor_ahead_of_the_bus_resyncs_instead_of_stalling(client, bus
 
 
 async def test_a_resync_does_not_replay_commands_from_the_old_session(client, bus):
-    # Snapping the stale cursor back to 0 would re-fire whatever is still in
-    # the log -- including 'open', which navigates the page.
+    # Snapping the stale cursor to 0 would re-fire the log, including 'open',
+    # which navigates the page.
     bus.append("open")
     bus.append("back")
     body = await (await client.get("/events", params={"cursor": "42"})).json()
@@ -126,9 +124,8 @@ async def test_a_resync_does_not_replay_commands_from_the_old_session(client, bu
 
 
 async def test_health_reports_the_current_cursor(client, bus):
-    # A page that has just loaded must start from the present. Without this it
-    # asks for everything since 0 and replays the whole session -- including
-    # navigation commands.
+    # A freshly loaded page starts from the present; asking from 0 would replay
+    # the whole session, navigation included.
     assert (await (await client.get("/health")).json())["cursor"] == 0
     bus.append("toggle")
     bus.append("next")

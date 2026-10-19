@@ -7,10 +7,9 @@ from typing import Any
 
 from .config import Config, KeyBinding
 
-# Commands that should keep firing while their key is held, letting Windows'
-# auto-repeat ramp the value. Every other command fires once per physical
-# press, so a finger resting on the toggle key cannot strobe the scroller and
-# a held open key cannot fire a burst of navigations.
+# Commands that keep firing while held, so Windows' auto-repeat ramps the value.
+# Every other command fires once per press: a resting finger cannot strobe the
+# toggle, nor a held open key fire a burst of navigations.
 REPEAT_ON_HOLD = frozenset({"faster", "slower"})
 
 
@@ -65,14 +64,10 @@ class HotkeyListener:
     def handle_event(self, event: Any) -> None:
         """Route one raw key event. Always returns None.
 
-        This must stay a single hook rather than a keyboard.on_press plus a
-        keyboard.on_release pair. keyboard's dispatch loop stops at the first
-        handler returning truthy, and its on_press wrapper returns True for
-        every key-up -- which swallowed the release before a separately
-        registered on_release hook could see it. _held then never cleared and
-        each key fired exactly once per daemon lifetime.
-
-        Returning None also keeps us from suppressing anyone else's handler.
+        One hook, not keyboard.on_press plus on_release: keyboard's dispatch stops at
+        the first truthy handler, and its on_press wrapper returns True for every
+        key-up, swallowing the release. _held then never cleared and each key fired
+        once per daemon lifetime. Returning None also suppresses no other handler.
         """
         if getattr(event, "event_type", None) == "up":
             self.handle_release(event)

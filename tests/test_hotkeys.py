@@ -76,16 +76,12 @@ def test_an_event_without_the_keypad_attribute_is_treated_as_non_keypad():
 
 # --- Single-dispatcher regression tests -------------------------------------
 #
-# These cover a bug that unit-testing handle_press/handle_release directly
-# could never catch, because it lived in how two keyboard-library hooks
-# compose rather than in either handler.
-#
-# keyboard's dispatch loop (_generic.py invoke_handlers) stops as soon as a
-# handler returns truthy. keyboard.on_press(cb) registers
-# `lambda e: e.event_type == KEY_UP or cb(e)`, which returns True on every
-# key-up -- halting the loop before a separately registered on_release hook
-# ever runs. The release handler never fired, _held never cleared, and each
-# key worked exactly once per daemon lifetime.
+# The bug lived in how two keyboard-library hooks compose, so testing
+# handle_press/handle_release directly could never catch it. keyboard's
+# dispatch loop (_generic.py invoke_handlers) stops at the first truthy handler,
+# and keyboard.on_press(cb) registers `lambda e: e.event_type == KEY_UP or cb(e)`,
+# True on every key-up: a separate on_release hook never ran, _held never
+# cleared, and each key worked once per daemon lifetime.
 
 
 def event(scan_code: int, event_type: str, is_keypad: bool = True) -> SimpleNamespace:
@@ -117,11 +113,9 @@ def test_the_dispatcher_routes_a_release_so_the_key_can_fire_again():
 
 
 def test_the_dispatcher_never_halts_the_handler_chain():
-    # keyboard stops dispatching to further handlers as soon as one returns
-    # truthy, which would silence every other listener on the system -- and,
-    # if we ever register a second hook, ourselves. Asserting through
-    # invoke_handlers tests that consequence rather than the raw return value,
-    # which the type checker already pins to None.
+    # A truthy return stops keyboard's dispatch, silencing every other listener on
+    # the system (and any second hook of ours). Asserting through invoke_handlers
+    # tests that consequence; the type checker already pins the return to None.
     hk, _ = listener()
     later_handler_saw: list[SimpleNamespace] = []
     handlers = [hk.handle_event, later_handler_saw.append]
@@ -152,8 +146,8 @@ def test_auto_repeat_is_still_collapsed_through_the_dispatcher():
 
 
 def test_holding_the_speed_keys_ramps_continuously():
-    # Windows auto-repeat is what drives the ramp; the speed keys deliberately
-    # opt out of the one-shot guard so a held + walks the speed up.
+    # Windows auto-repeat drives the ramp: the speed keys opt out of the one-shot
+    # guard, so a held + walks the speed up.
     hk, fired = listener()
     for _ in range(4):
         hk.handle_event(event(78, "down"))  # numpad +
@@ -198,8 +192,8 @@ def test_new_bindings_replace_the_old_ones():
 
 
 def test_rebinding_forgets_which_keys_were_held():
-    # A key held across the change must not stay "held" forever under a
-    # command that no longer exists for it.
+    # A key held across the change must not stay "held" forever under a command
+    # it no longer has.
     from reddit_scroller.config import resolve_codes
 
     hk, fired = listener()

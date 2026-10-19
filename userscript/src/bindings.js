@@ -114,10 +114,7 @@ export function toCodes(bindings) {
   );
 }
 
-/**
- * Bindings from the command -> key code map the daemon reports. A command it
- * does not mention has no key there, so it has none here either.
- */
+/** Bindings from the daemon's command -> code map; one it omits is unbound. */
 export function fromCodes(codes) {
   const source = codes && typeof codes === "object" ? codes : {};
   return Object.fromEntries(

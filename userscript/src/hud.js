@@ -8,9 +8,8 @@ export const BAR_CELLS = 12;
 
 const STYLE_ID = "rs-style";
 
-// How long after the speed field closes the HUD still counts as editing. The
-// daemon's hook is global, so the Enter that confirms a value also arrives as
-// a command, a few tens of milliseconds later over the long poll.
+// How long after the speed field closes it still counts as editing: the global
+// hook also sends the confirming Enter as a command, tens of ms later.
 const EDIT_GRACE_MS = 500;
 
 const CSS = `
@@ -153,9 +152,8 @@ export const HELP_ORDER = [
 
 /** Turn the daemon's command->key-name map into rows for the help panel. */
 export function helpRows(bindings) {
-  // With the daemon down we never learn the configured bindings -- and that is
-  // exactly when someone is most likely to be looking for this panel. Fall
-  // back to the defaults, which are what the in-page key handler uses anyway.
+  // With the daemon down its bindings are unknown, which is exactly when this
+  // panel gets looked for. Fall back to the defaults the in-page handler uses.
   const source =
     bindings && Object.keys(bindings).length ? bindings : DEFAULT_BINDINGS;
   const rows = [];
@@ -202,10 +200,8 @@ export function formatHud(state) {
     mode: state.mode.toUpperCase(),
     subreddit,
     title,
-    // "browser only" rather than "no daemon": every key still works, just
-    // not while another window has focus. Naming the mode that is running
-    // beats naming the half that is missing, and the amber says degraded
-    // rather than broken.
+    // "browser only", not "no daemon": name the mode that runs. Every key works,
+    // just not while another window has focus; amber says degraded, not broken.
     daemon: state.daemonConnected ? "daemon" : "browser only",
     daemonClass: state.daemonConnected ? "rs-online" : "rs-offline",
     flash: state.lastCommand ? state.lastCommand.toUpperCase() : "",

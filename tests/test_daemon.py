@@ -55,8 +55,8 @@ async def started(task):
 
 
 async def test_a_key_press_reaches_a_polling_http_client():
-    # Port 0 is not usable here because the client needs to know the port, so
-    # pick one well away from the default to avoid clashing with a live daemon.
+    # Not port 0: the client needs to know it. Far from the default, so a live
+    # daemon does not clash.
     config = replace(Config.default(), port=8799)
 
     task = asyncio.create_task(run(config, listener_factory=FakeListener))
@@ -125,9 +125,8 @@ async def test_cleanup_runs_when_listener_stop_raises(monkeypatch):
     task = asyncio.create_task(run(config, listener_factory=RaisingListener))
     await started(task)
 
-    # Cancelling stands in for Ctrl+C: it triggers the shutdown `finally`.
-    # listener.stop()'s RuntimeError takes over from the CancelledError as it
-    # propagates, so the task ends in RuntimeError rather than being cancelled.
+    # Cancelling stands in for Ctrl+C, triggering the shutdown `finally`, where
+    # listener.stop()'s RuntimeError replaces the CancelledError.
     task.cancel()
     with pytest.raises(RuntimeError, match="hook teardown failed"):
         await task
@@ -172,9 +171,8 @@ def test_main_reports_a_busy_port_helpfully(monkeypatch, capsys):
     assert daemon.main() == 1
     err = capsys.readouterr().err
     assert "could not bind 127.0.0.1:8765" in err
-    # Naming config.json alone is what made this message a trap: following it
-    # moved the daemon and left the page polling the old port. Both sides or
-    # neither.
+    # Naming config.json alone made this message a trap: following it moved the
+    # daemon and left the page polling the old port. Both sides or neither.
     assert "config.json" in err
     assert "rs-port" in err
 

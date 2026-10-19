@@ -1,17 +1,12 @@
 /**
- * Refuses a change to the userscript that does not raise its version.
- *
- * Installs update from the bundle on main, and a userscript manager installs
- * an update only when @version rises -- so a change merged under the old
- * version reaches nobody, and nothing says so. CI runs this against the
- * previous commit's bundle:
+ * Refuses a change to the userscript that does not raise its version: installs
+ * update from main only when @version rises, so it would silently reach nobody.
  *
  *   node check-version-bump.mjs <base.user.js> <head.user.js>
  *
- * Every header line but @version counts, since a manager applies a new
- * @connect or @grant only when it updates. In the code, comments and
- * whitespace do not: both bodies go through esbuild's parser, which, unlike a
- * regex, knows that the // in "http://127.0.0.1" belongs to a string.
+ * Every header line but @version counts (a new @connect or @grant applies only
+ * on update). In the code, comments and whitespace do not: esbuild's parser,
+ * unlike a regex, knows the // in "http://127.0.0.1" is inside a string.
  */
 
 import { readFileSync } from "node:fs";

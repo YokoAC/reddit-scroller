@@ -213,9 +213,8 @@ describe("helpRows without a daemon", () => {
   });
 
   it("advertises the same keys the in-page fallback actually handles", () => {
-    // If these drift apart the panel lies to anyone running without a daemon.
-    // commandForKeyCode is the real fallback map, so this asserts against the
-    // shipped behaviour rather than a copy of it.
+    // Drift here makes the panel lie to anyone without a daemon. Asserted against
+    // commandForKeyCode, the real fallback map, not a copy of it.
     const shown = Object.fromEntries(
       helpRows(undefined).map((r) => [r.command, r.key]),
     );

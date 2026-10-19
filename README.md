@@ -38,20 +38,15 @@ Two halves:
    — Violentmonkey recognises the `.user.js` name and offers to install it.
 3. Open `https://www.reddit.com`. The HUD appears bottom-right.
 
-That is the whole install, and it is already usable: the numpad scrolls the
-feed whenever the browser has focus. No Python, no Node. No numpad either?
-[Change the keys](#changing-the-keys).
-
-It updates itself from then on.
+That is the whole install, it updates itself, and it is already usable: the
+numpad scrolls the feed whenever the browser has focus. No Python, no Node. No
+numpad either? [Change the keys](#changing-the-keys).
 
 **2. The daemon** — Windows only, optional, for the case a page cannot cover
 
-A web page only receives keys while it has focus. The daemon hooks the
-keyboard globally, so the numpad still works with another application in front.
-That is the only thing it adds.
-
-Unlike step 1, this half is a Python project, so it needs the code and something
-to run it with:
+A web page only receives keys while it has focus. The daemon hooks the keyboard
+globally, so the numpad still works with another application in front. That is
+all it adds. It is a Python project, so it needs the code and a way to run it:
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), which
    fetches Python and the dependencies for you:
@@ -73,12 +68,11 @@ to run it with:
 Leave it running; it prints its bindings on start. The HUD's dot turns green
 within a few seconds — no reload needed.
 
-It is a global keyboard hook, so it is worth saying plainly what it does. It
-reads only the scan codes it is bound to; any other key is dropped in
-`handle_press` before anything is stored, printed or sent. Nothing is written
-to disk, nothing leaves `127.0.0.1`, and nothing is suppressed — whatever has
-focus still receives every key you press. That is all of
-[`hotkeys.py`](src/reddit_scroller/hotkeys.py), which is short on purpose.
+What a global keyboard hook does, plainly: it reads only the scan codes it is
+bound to; any other key is dropped in `handle_press` before anything is stored,
+printed or sent. Nothing is written to disk, nothing leaves `127.0.0.1`, and
+nothing is suppressed — whatever has focus still receives every key. That is all
+of [`hotkeys.py`](src/reddit_scroller/hotkeys.py), short on purpose.
 
 ### Building from source
 
@@ -99,19 +93,16 @@ higher.
 
 ### Without the daemon
 
-Stopping after step 1 is a supported way to use this, not a half-installed
-state. Every key in the table below does the same thing, handled in the page.
-What you give up is the alt-tab case above: the numpad goes to whatever took
-focus, and the feed stops responding.
+Stopping after step 1 is supported, not half-installed. Every key in the table
+below does the same thing, handled in the page; only the alt-tab case is lost:
+the numpad goes to whatever took focus, and the feed stops responding.
 
-On macOS and Linux this is the whole product, and it works today — the
-userscript half has nothing platform-specific in it. Only the daemon is tied to
-Windows, because it matches keys by Windows scan code. Porting it would mean a
-second scan-code table, root access to read `/dev/input`, and an argument with
-Wayland, which restricts global key grabbing by design. If it ever happens it
-will not be by porting the hook: the daemon already separates producing a
-command from delivering one, so binding a key in your desktop environment to a
-small command-line client would do the same job without hooking anything.
+On macOS and Linux this is the whole product, and it works today: only the
+daemon is tied to Windows scan codes. Porting the hook would mean a second
+scan-code table, root access to `/dev/input`, and an argument with Wayland,
+which restricts global key grabbing by design. More likely: the daemon already
+separates producing a command from delivering one, so a desktop-environment key
+binding running a small command-line client would do the job, hooking nothing.
 
 The HUD names which of the two is driving. **`● daemon`** in green means the
 daemon is; **`● browser only`** in amber means the page is, and that the hotkey
@@ -120,18 +111,17 @@ not red: nothing is broken in that state.
 
 ## Browser support
 
-Firefox and Chrome both work, and both are tested: `npm run test:browser` runs the
-built bundle in real Firefox and real Chromium against a real daemon, and CI runs
-that suite on every pull request. Nothing in the page half is engine-specific, and the
-daemon never learns which browser it is talking to.
+Firefox and Chrome both work and are tested: `npm run test:browser` runs the built
+bundle in real Firefox and Chromium against a real daemon, on every pull request in
+CI. Nothing in the page half is engine-specific, and the daemon never learns which
+browser it talks to.
 
-One hop those tests have to substitute, so check it once on a browser you have not
-used this on before: `GM_xmlhttpRequest` from an `https://www.reddit.com` page to
-`http://127.0.0.1`. That request is issued by the userscript manager's extension
-rather than by the page, which is what keeps it clear of mixed-content and CORS
-rules — but a browser may still apply a policy of its own to extension traffic
-aimed at the local network, and could prompt for it or refuse it. A green dot next
-to "daemon" in the HUD means it went through.
+One hop the tests substitute, so check it once on a new browser:
+`GM_xmlhttpRequest` from an `https://www.reddit.com` page to `http://127.0.0.1`.
+The manager's extension issues it, not the page, which keeps it clear of
+mixed-content and CORS rules, but a browser may still prompt for or refuse
+extension traffic to the local network. A green dot next to "daemon" in the HUD
+means it went through.
 
 ## Controls
 
@@ -207,8 +197,6 @@ Be careful what you bind with the daemon running: it listens everywhere and
 swallows nothing, so a bound `F` fires on every `f` you type in any program. The
 one exception is a text field on Reddit itself, where the keys are left alone.
 
-Nothing is suppressed: whatever has focus still receives every key.
-
 ## Configuration
 
 Copy `config.example.json` to `config.json` and edit. Every field is optional; anything
@@ -239,19 +227,16 @@ the committed template.
 
 ## Troubleshooting
 
-**The HUD says "browser only" and the keys still work.** That is the documented
-fallback, not a failure — see [Without the daemon](#without-the-daemon). The keys
-are being handled in the page, and they will stop the moment another window takes
-focus. The daemon is not running, it is on a different port than the userscript
-expects, or the browser is blocking the userscript manager's request to
-`127.0.0.1` — see [Browser support](#browser-support), and check the manager's own
-console for a refused or pending local-network request. Otherwise check that
-`uv run python -m reddit_scroller` is up and that the two sides agree on the
-port. It lives in two places: `port` in your
-`config.json`, and a value named `rs-port` that the userscript stores in your
-manager — Violentmonkey and Tampermonkey both expose it under the script's
-**Values** (or **Storage**) tab. Changing one without the other leaves the page
-polling a port nothing is listening on. Neither edit needs a rebuild.
+**The HUD says "browser only" and the keys still work.** That is the
+[fallback](#without-the-daemon), not a failure: the page handles the keys, until
+another window takes focus. Either the daemon is not running
+(`uv run python -m reddit_scroller`), the two sides disagree on the port, or the
+browser blocks the manager's request to `127.0.0.1` (see
+[Browser support](#browser-support); check the manager's console for a refused or
+pending local-network request). The port lives in two places: `port` in
+`config.json`, and `rs-port` in your manager, under the script's **Values** (or
+**Storage**) tab in Violentmonkey and Tampermonkey. Change both; neither needs a
+rebuild.
 
 **Hotkeys work everywhere except one application.** It probably runs elevated,
 and Windows will not deliver hooked keys from an elevated window to a
@@ -282,44 +267,36 @@ cd userscript && npm run test:integration   # both halves, over real HTTP
 cd userscript && npm run test:browser       # the bundle in Firefox and Chromium
 ```
 
-The integration suite starts the real daemon and drives the real transport
-against it over HTTP, substituting only the keyboard hook. Every user-visible
-bug in this project has lived in the seam between the two halves rather than
-inside either one — both were well covered against hand-written stubs of each
-other, which is exactly how the wire contract drifted twice with every test
-still green. It needs the Python venv, so run `uv sync` first.
+The integration suite runs the real daemon against the real transport over
+HTTP, substituting only the keyboard hook. Every user-visible bug so far lived
+in the seam between the halves: each was tested against hand-written stubs of
+the other, which is how the wire contract drifted twice with every test green.
+It needs the venv: run `uv sync` first.
 
-The browser suite answers the question jsdom cannot: whether the engines agree.
-It compiles the bundle from `src`, loads it into real Firefox and real Chromium
-through Playwright as a manager would, and asserts the things that depend on a
-real engine — that the window actually scrolls at the configured rate, that
-layout puts the selected post on the focus line, that speed survives a
-navigation, and that `KeyboardEvent.code` carries the numpad names the fallback
-handler expects. It needs the venv too, plus `npx playwright install`.
+The browser suite answers what jsdom cannot: whether the engines agree. It
+compiles the bundle from `src`, loads it into real Firefox and Chromium through
+Playwright as a manager would, and asserts what depends on the engine: that the
+window scrolls at the configured rate, layout puts the selected post on the
+focus line, speed survives a navigation, and `KeyboardEvent.code` carries the
+numpad names the fallback handler expects. It needs the venv plus
+`npx playwright install`.
 
-Playwright's Firefox build does not start on every Windows machine — it is an
-unsigned, patched build, and some configurations refuse to load its private
-`mozglue` assembly. If it fails there, run `npm run test:browser -- --project=chromium`
-locally; the CI job runs both engines on Linux either way.
+Playwright's Firefox, an unsigned patched build, does not start on every Windows
+machine: some refuse to load its private `mozglue` assembly. There, run
+`npm run test:browser -- --project=chromium`; CI runs both engines on Linux.
 
-CI runs all four suites on every pull request and push to `main`: the daemon on Windows, since the hotkey
-layer is built around Windows scan codes, and the rest on Linux.
+CI runs all four suites on every pull request and push to `main`: the daemon on
+Windows, for its scan codes, the rest on Linux.
 
-[docs/architecture.md](docs/architecture.md) covers why the design is the way
-it is — long polling rather than a WebSocket, a userscript rather than an
-extension, loopback with no authentication — and the limitations that come
-with those choices.
+[docs/architecture.md](docs/architecture.md) explains the design — long polling
+rather than a WebSocket, a userscript rather than an extension, loopback with no
+authentication — and the limits that come with it.
 
-Coverage is gated on both halves — `fail_under` in `pyproject.toml` and
-`thresholds` in `userscript/vitest.config.js` — and the build fails when it
-slips below them. Both sit a little under what the suites actually reach, so
-one awkward-to-cover line cannot break an unrelated change. That gate is the
-number worth knowing, and it lives in those two files rather than being
-quoted here, where nothing would keep it honest.
-
-Two things are deliberately excluded: the hotkey listener's `start`/`stop`,
-which install a real machine-wide keyboard hook, and `main.js`, which is
-covered by `tests/main.test.js` but bundled into a jsdom window per test so
-v8 cannot attribute it back to the source file.
-Each CI run prints both coverage tables in its summary and uploads the full
-HTML reports as artifacts.
+Coverage is gated on both halves by `fail_under` in `pyproject.toml` and
+`thresholds` in `userscript/vitest.config.js`, set a little under what the suites
+reach, so one awkward line cannot break an unrelated change. The numbers live
+only there, where the build keeps them honest. Deliberately excluded: the hotkey
+listener's `start`/`stop`, which install a real machine-wide hook, and `main.js`,
+covered by `tests/main.test.js` but bundled into a jsdom window per test, so v8
+cannot attribute it to the source file. Each CI run prints both coverage tables
+in its summary and uploads the HTML reports as artifacts.

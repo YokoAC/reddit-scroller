@@ -1,17 +1,13 @@
 /**
- * Cross-half integration tests.
+ * Cross-half integration tests. Every user-visible bug so far lived in the seam
+ * between the halves: a fresh page replaying the daemon's backlog, a page
+ * stalling after a daemon restart, and the settings contract. Each half was
+ * tested against a hand-written stub of the other, which is how the contract
+ * drifted twice with every test green.
  *
- * Every user-visible bug in this project so far has lived in the seam between
- * the two halves rather than inside either one: a fresh page replaying the
- * daemon's whole backlog, a page stalling after a daemon restart, and the
- * settings contract. Both halves were well covered in isolation -- each
- * against a hand-written stub of the other, which is precisely how the
- * contract drifted twice with every test still green.
- *
- * These tests run the real aiohttp server and the real Transport against each
- * other over real HTTP. The only substitution is the keyboard hook, which is
- * replaced by writing command names to the daemon's stdin -- the same seam,
- * and the same bus method, the hook itself uses.
+ * So the real aiohttp server and the real Transport talk over real HTTP. Only
+ * the keyboard hook is replaced, by writing command names to the daemon's
+ * stdin: the same seam and bus method the hook uses.
  */
 
 import { spawn } from "node:child_process";
@@ -26,16 +22,15 @@ const REPO_ROOT = path.resolve(
   "../../..",
 );
 
-// Well clear of the daemon's default 8765 and of the fixed ports the Python
-// suite binds (8797-8799). Each daemon takes the next port so a stopped one
-// releasing its socket can never collide with the next test starting.
+// Clear of the daemon's 8765 and the Python suite's 8797-8799. Each daemon
+// takes the next port, so one releasing its socket never collides with the
+// next test.
 let nextPort = 8810;
 const POLL_TIMEOUT = "2.0";
 
-// Run the venv's interpreter directly rather than going through `uv run`.
-// `uv run` spawns Python as a grandchild, so kill() would terminate uv and
-// leave the daemon orphaned -- holding its port and its connections open.
-// Verified: that leaked one live daemon per test.
+// The venv's interpreter directly, not `uv run`: that spawns Python as a
+// grandchild, so kill() ended uv and orphaned the daemon, port and
+// connections still open. Verified: one leaked live daemon per test.
 const PYTHON =
   process.platform === "win32"
     ? path.join(REPO_ROOT, ".venv", "Scripts", "python.exe")

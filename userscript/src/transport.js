@@ -1,10 +1,7 @@
 /**
- * Long-poll transport to the local daemon.
- *
- * A WebSocket would be the obvious choice, but ws:// from an https:// page is
- * mixed content and userscript managers do not proxy sockets. GM_xmlhttpRequest
- * runs in the manager's privileged context, so a held GET is both allowed and
- * fast enough to be indistinguishable from a socket here.
+ * Long-poll transport to the local daemon. Not a WebSocket: ws:// from an
+ * https:// page is mixed content, and managers do not proxy sockets.
+ * GM_xmlhttpRequest runs privileged, and a held GET is just as fast here.
  */
 
 const MAX_BACKOFF_MS = 5000;
@@ -13,13 +10,9 @@ const MAX_BACKOFF_MS = 5000;
 export const DEFAULT_PORT = 8765;
 
 /**
- * Coerce a stored port into something usable.
- *
- * The value comes from GM storage, which a user edits by hand in their
- * manager's UI -- so it arrives as whatever they typed, including nothing at
- * all. A bad value must not leave the script unable to reach a daemon that is
- * running perfectly well on the default, so anything unusable falls back
- * rather than throwing.
+ * Coerce a stored port into something usable. Users edit it by hand in the
+ * manager, so it can be anything, even empty: an unusable value falls back to
+ * the default rather than throwing, so a running daemon stays reachable.
  */
 export function normalisePort(raw) {
   const port = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
@@ -81,9 +74,8 @@ export class Transport {
         if (this._settings === null) {
           const health = await this._json("GET", "/health");
           this._settings = health.settings || {};
-          // Begin at the daemon's current position. A page that has just
-          // loaded must not be handed the backlog: replaying old commands
-          // re-runs navigation and throws the reader back where they were.
+          // Start at the daemon's current position: replaying the backlog would re-run
+          // navigation and throw the reader back where they were.
           if (typeof health.cursor === "number") this._cursor = health.cursor;
         }
         const body = await this._json("GET", `/events?cursor=${this._cursor}`);

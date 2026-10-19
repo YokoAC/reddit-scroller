@@ -16,6 +16,8 @@ as a full-screen game, has focus.
   <img src="docs/screenshot.png" alt="A Reddit feed scrolling: the post in focus outlined in blue, and the HUD bottom-right showing the state, speed and that post's title">
 </div>
 
+https://github.com/user-attachments/assets/515b52ea-ceb3-4d2f-9b2a-6ce269a27180
+
 Two halves:
 
 - A **userscript** that runs inside your real, already-logged-in Firefox or Chrome.

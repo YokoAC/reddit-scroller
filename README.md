@@ -16,6 +16,11 @@ as a full-screen game, has focus.
   <img src="docs/screenshot.png" alt="A Reddit feed scrolling: the post in focus outlined in blue, and the HUD bottom-right showing the state, speed and that post's title">
 </div>
 
+In motion: scrolling, picking and opening a post, and going back, all from the
+numpad while a game keeps focus.
+
+https://github.com/user-attachments/assets/515b52ea-ceb3-4d2f-9b2a-6ce269a27180
+
 Two halves:
 
 - A **userscript** that runs inside your real, already-logged-in Firefox or Chrome.
@@ -284,6 +289,10 @@ numpad names the fallback handler expects. It needs the venv plus
 Playwright's Firefox, an unsigned patched build, does not start on every Windows
 machine: some refuse to load its private `mozglue` assembly. There, run
 `npm run test:browser -- --project=chromium`; CI runs both engines on Linux.
+
+`npm run demo` re-records the demo video into `userscript/demo/out/demo.mp4`:
+the real bundle against the hookless daemon, beside a stand-in game. It needs
+the venv and Chromium as above; ffmpeg is fetched temporarily through uv.
 
 CI runs all four suites on every pull request and push to `main`: the daemon on
 Windows, for its scan codes, the rest on Linux.

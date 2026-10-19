@@ -28,17 +28,15 @@ packages = ["src/reddit_scroller"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-# A warning nobody acts on is noise that hides the one that matters.
+# Warnings fail the run: an ignored one hides the one that matters.
 filterwarnings = ["error"]
 
 [tool.coverage.run]
 source = ["src/reddit_scroller"]
 
 [tool.coverage.report]
-# start() and stop() install a real, machine-wide keyboard hook, and main()'s
-# signal handling and __main__ guard only run as a process entry point. Neither
-# is reachable from a test that is safe to run on a developer's machine or in
-# CI, so they are excluded rather than left to drag the number down.
+# start()/stop() install a real global keyboard hook, and the __main__ guard only
+# runs as an entry point: neither is safe to reach from a test.
 exclude_also = [
     'if __name__ == .__main__.:',
     'def start\(self\) -> None:',
@@ -51,9 +49,7 @@ show_missing = true
 target-version = "py313"
 line-length = 88
 src = ["src", "tests"]
-# The design doc and implementation plan are a historical record of how this
-# was built. Ruff reformats the Python snippets inside them, which is churn
-# against a document nobody executes.
+# Prose; ruff would reformat the code snippets in it.
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
@@ -85,11 +81,9 @@ module = "keyboard.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-# Tests get every check except mandatory annotations on each test function:
-# requiring "-> None" on a hundred test defs buys nothing. This needs tests/
-# to be a real package: mypy only accepts wildcards as whole components, so
-# "test_*" is not a usable pattern, and without __init__.py these files would
-# be top-level modules that "tests.*" could never match.
+# Tests skip mandatory annotations ("-> None" on every test buys nothing).
+# tests/ must be a package: mypy wildcards match whole components only, so
+# "tests.*" is the only pattern that reaches these files.
 module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false

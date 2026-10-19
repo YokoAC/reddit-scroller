@@ -61,10 +61,8 @@ describe("ScrollEngine", () => {
   });
 
   it("accumulates sub-pixel remainders instead of dropping them", () => {
-    // 32 px/s at 1/64 s per frame is exactly 0.5 px per frame. Both operands
-    // are binary-exact, so this asserts the accumulator's behaviour without
-    // floating-point drift deciding the outcome: whole pixels come out every
-    // second frame and nothing is lost to truncation.
+    // 32 px/s at 1/64 s per frame is exactly 0.5 px, both binary-exact, so no
+    // float drift decides it: a whole pixel every second frame, none truncated.
     const { engine, moves } = makeEngine({ speed: 32 });
     engine.start();
     engine.tick(0);
@@ -319,9 +317,8 @@ describe("ScrollEngine frame plumbing", () => {
   it("re-arms itself through the callback it hands the browser", () => {
     const { engine, moves, frames } = makeEngine();
     engine.start();
-    // The other tests call tick() directly. Driving the engine through the
-    // queued callback instead is what proves it keeps asking for the next
-    // frame rather than stopping after the first one.
+    // The other tests call tick() directly; driving the queued callback proves
+    // the engine keeps requesting frames after the first.
     frames.at(-1)(1000);
     frames.at(-1)(1100);
     expect(moves).toEqual([10]);

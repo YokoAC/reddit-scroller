@@ -497,10 +497,8 @@
       mode: state.mode.toUpperCase(),
       subreddit,
       title,
-      // "browser only" rather than "no daemon": every key still works, just
-      // not while another window has focus. Naming the mode that is running
-      // beats naming the half that is missing, and the amber says degraded
-      // rather than broken.
+      // "browser only", not "no daemon": name the mode that runs. Every key works,
+      // just not while another window has focus; amber says degraded, not broken.
       daemon: state.daemonConnected ? "daemon" : "browser only",
       daemonClass: state.daemonConnected ? "rs-online" : "rs-offline",
       flash: state.lastCommand ? state.lastCommand.toUpperCase() : ""
@@ -894,9 +892,8 @@
       min,
       max,
       step,
-      // Whether `speed` already reflects a deliberate choice (typically a
-      // value persisted from a previous session) rather than a placeholder
-      // built-in default. See seedDefaultSpeed().
+      // Whether `speed` is a deliberate choice (e.g. persisted from a previous
+      // session) rather than the built-in default. See seedDefaultSpeed().
       seeded = false,
       // Whether `speed` was typed by hand, and so may sit below `min`.
       exact = false
@@ -945,9 +942,8 @@
       return this._speed;
     }
     /**
-     * A speed chosen by hand: anything from EXACT_MIN to the maximum. The
-     * minimum is for the keys, so it does not apply, and later limits from the
-     * daemon will not raise it.
+     * A speed chosen by hand, from EXACT_MIN to the maximum. The minimum bounds
+     * only the keys, and later daemon limits will not raise it.
      */
     setExactSpeed(pxPerSecond) {
       this._seeded = true;
@@ -968,11 +964,9 @@
       return this.setSpeed(next);
     }
     /**
-     * Adopt a daemon-configured default speed — but only the first time this
-     * is called on an engine that was not already seeded (by a persisted
-     * speed at construction, a prior call here, or a manual adjustSpeed()).
-     * Safe to call on every daemon connect/reconnect: after the first
-     * application it is a no-op, so it cannot undo a live +/- adjustment.
+     * Adopt a daemon-configured default speed, unless already seeded (persisted
+     * speed, an earlier call, or adjustSpeed()). Safe on every reconnect: it
+     * cannot undo a live +/- adjustment.
      */
     seedDefaultSpeed(pxPerSecond) {
       if (this._seeded) return this._speed;

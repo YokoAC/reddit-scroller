@@ -1,23 +1,16 @@
 /**
- * The harness the cross-browser specs share.
+ * The harness the cross-browser specs share. They answer what the jsdom suites
+ * cannot: does the shipped bundle behave the same in Chrome as in Firefox? So
+ * they run the real bundle, compiled from src, in a real engine against the
+ * real daemon, with the same two stand-ins as the cross-half integration suite:
  *
- * These tests exist to answer one question the jsdom suites cannot: does the
- * shipped bundle behave the same in Chrome as it does in Firefox? So they run
- * the real bundle, compiled from src, inside a real engine, against the real
- * daemon -- the same substitutions the cross-half integration suite makes and
- * no more.
- *
- * Two things are stood in for, both deliberately:
- *
- * - The keyboard hook, replaced by writing command names to the daemon's
- *   stdin. Identical to tests/integration/wire.test.js, and the same seam the
- *   hook itself uses.
- * - `GM_xmlhttpRequest`, replaced by an exposed binding that fetches from
- *   Node. That is closer than it looks: the real one also runs outside the
- *   page, in the manager's privileged context, which is exactly why it is
- *   neither CORS-restricted nor mixed-content blocked. What this cannot
- *   reproduce is a given browser's own policy on extension traffic to
- *   loopback -- see the browser-support note in the README.
+ * - The keyboard hook: command names written to the daemon's stdin, as in
+ *   tests/integration/wire.test.js, the same seam the hook uses.
+ * - `GM_xmlhttpRequest`: an exposed binding that fetches from Node. Close to the
+ *   real one, which also runs outside the page in the manager's privileged
+ *   context, hence free of CORS and mixed-content blocking. It cannot reproduce
+ *   a browser's own policy on extension traffic to loopback (see the README's
+ *   browser-support note).
  */
 
 import { spawn } from "node:child_process";
@@ -40,9 +33,9 @@ const PYTHON =
     ? path.join(REPO_ROOT, ".venv", "Scripts", "python.exe")
     : path.join(REPO_ROOT, ".venv", "bin", "python");
 
-// Clear of the daemon's default 8765, the Python suite's 8797-8799 and the
-// cross-half suite's 8810+. Each worker gets its own decade so two browser
-// projects running in parallel cannot land on the same socket.
+// Clear of the daemon's 8765, the Python suite's 8797-8799 and the cross-half
+// suite's 8810+. Each worker gets its own decade, so parallel browser projects
+// never share a socket.
 const PORT_BASE = 8830;
 const POLL_TIMEOUT = "2.0";
 
@@ -191,9 +184,8 @@ export function startDaemon(port) {
 let portOffset = 0;
 
 /**
- * A port this worker alone will use. Each test takes the next one rather than
- * reusing a single port: a daemon that has just been killed can hold its
- * socket briefly, and the next test must not have to wait for it.
+ * A port this worker alone uses, a new one per test: a just-killed daemon can
+ * hold its socket briefly, and the next test must not wait for it.
  */
 export function nextPort(testInfo) {
   return PORT_BASE + testInfo.workerIndex * 100 + portOffset++;
@@ -213,9 +205,8 @@ export async function preparePage(page, port) {
     return { status: response.status, text: await response.text() };
   });
 
-  // GM storage, seeded with this test's port. The script reads the port from
-  // here, so each test reaches its own daemon the same way a reader moving off
-  // 8765 would -- by setting a value in their manager, with nothing rebuilt.
+  // GM storage, seeded with this test's port: each test reaches its own daemon
+  // as a reader moving off 8765 would, by a manager value, nothing rebuilt.
   await page.addInitScript((seedPort) => {
     const store = new Map([["rs-port", seedPort]]);
     window.GM_getValue = (key, fallback) =>
@@ -240,9 +231,9 @@ export async function preparePage(page, port) {
   }, port);
 
   const code = await bundle();
-  // Re-injected on every navigation, as a manager would, and deferred to
-  // DOMContentLoaded to reproduce the banner's @run-at document-idle -- main.js
-  // reads the document as soon as it runs.
+  // Re-injected on every navigation, as a manager does, and deferred to
+  // DOMContentLoaded like the banner's @run-at document-idle: main.js reads the
+  // document as soon as it runs.
   await page.addInitScript({
     content: `(function () {
   var run = function () {

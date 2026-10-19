@@ -365,10 +365,9 @@ describe("Transport starts from the present", () => {
 });
 
 describe("gmRequest", () => {
-  // GM_xmlhttpRequest only exists inside a userscript manager. The adapter is
-  // the one piece of the transport that talks to it, so it is exercised
-  // against a stub that keeps whatever options it was handed and lets each
-  // test fire the callback it cares about.
+  // GM_xmlhttpRequest exists only inside a manager, and the adapter alone talks
+  // to it: a stub keeps the options it was handed and lets each test fire the
+  // callback it cares about.
   function stubManager() {
     const calls = [];
     vi.stubGlobal("GM_xmlhttpRequest", (options) => {

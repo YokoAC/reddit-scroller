@@ -4,9 +4,8 @@ import { build } from "esbuild";
 
 import { BUILD_TARGET } from "./build-target.js";
 
-// The version is written once, in package.json, and copied into the header. A
-// manager installs an update only when @version rises, so it must never be a
-// second number that someone forgets to bump.
+// The version lives only in package.json: managers update only when @version
+// rises, so it must not be a second number someone forgets to bump.
 const { version } = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
 );

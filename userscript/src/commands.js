@@ -25,9 +25,8 @@ export function resolveAction(command, mode) {
   return byMode[mode] || "noop";
 }
 
-// Used only when the browser itself has focus. The daemon covers the case that
-// matters — another application holding focus — but this makes the script
-// usable and testable on its own.
+// Used only when the browser has focus. The daemon covers another application
+// holding focus; this keeps the script usable and testable on its own.
 export const KEY_CODES = {
   Numpad0: "toggle",
   NumpadEnter: "open",
@@ -44,9 +43,9 @@ export const KEY_CODES = {
 };
 
 /**
- * The bindings this script assumes when the daemon has not told us otherwise.
- * Mirrors DEFAULT_BINDINGS in config.py, and matches the KEY_CODES fallback
- * above -- so with the daemon down, these are genuinely the keys that work.
+ * The bindings assumed until the daemon says otherwise. Mirrors
+ * DEFAULT_BINDINGS in config.py and the KEY_CODES fallback above, so with the
+ * daemon down these are the keys that work.
  */
 export const DEFAULT_BINDINGS = {
   toggle: "numpad0",

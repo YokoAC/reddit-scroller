@@ -1,16 +1,15 @@
 """Physical keys, named as the browser names them.
 
-The userscript identifies a key by ``KeyboardEvent.code`` -- its position on
-the keyboard, whatever the layout prints on it. The hook sees a Windows set-1
-scan code plus the ``keyboard`` library's ``is_keypad`` flag. This table joins
-the two, so one binding means the same key on both sides.
+The userscript names a key by ``KeyboardEvent.code``, its position whatever the
+layout prints on it; the hook sees a Windows set-1 scan code plus the
+``keyboard`` library's ``is_keypad`` flag. This table joins the two.
 
-The flag is what separates the pairs that share a scan code: Enter and numpad
-Enter, the arrows and numpad 2/4/6/8, ``/`` and numpad ``/``, the
-Insert/Delete/Home/End block and the numpad digits under it.
+The flag separates pairs sharing a scan code: Enter and numpad Enter, the
+arrows and numpad 2/4/6/8, ``/`` and numpad ``/``, Insert/Delete/Home/End and
+the numpad digits under them.
 
-Modifiers are left out on purpose. Left and right share a scan code, and a
-held modifier would fire its command on every shortcut the user types.
+No modifiers: left and right share a scan code, and a held modifier would fire
+its command on every shortcut the user types.
 """
 
 from __future__ import annotations

@@ -113,9 +113,8 @@ describe("Selection", () => {
 
   it("selects the first post on a cold start (nothing intersecting the viewport)", () => {
     const sel = makeSelection();
-    // Push every post below the viewport so refresh() lands on index -1 —
-    // the state of a just-loaded feed (or a tall ad block) before anything
-    // qualifies for the focus line.
+    // Push every post below the viewport so refresh() lands on -1, as in a
+    // just-loaded feed (or behind a tall ad block) before any post qualifies.
     document.querySelectorAll("shreddit-post").forEach((el, i) => {
       el.getBoundingClientRect = () => ({
         top: 1000 + i * 200,
@@ -223,9 +222,8 @@ describe("Selection edges", () => {
 
   it("moving backwards with nothing in view starts at the first post", () => {
     buildFeed();
-    // Everything has been scrolled off the top, so refresh() ranks nothing
-    // and the selection is left empty -- the state a reader reaches by
-    // scrolling past the whole feed before pressing prev.
+    // Everything is scrolled off the top, so the selection is empty: a reader who
+    // scrolled past the whole feed before pressing prev.
     document.querySelectorAll("shreddit-post").forEach((element) => {
       element.getBoundingClientRect = () => ({
         top: -600,

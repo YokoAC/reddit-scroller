@@ -1,9 +1,7 @@
 /**
- * The README's HUD illustration against the panel it illustrates.
- *
- * docs/hud.svg is hand-drawn, and nothing rendered it, so it drifted: standby
- * shipped with a tenth hotkey row and the picture kept advertising nine. Prose
- * and pictures go stale silently. This is the cheapest thing that stops it.
+ * The README's HUD illustration against the panel it illustrates. docs/hud.svg
+ * is hand-drawn and drifted silently: standby shipped a tenth hotkey row while
+ * the picture kept nine. This is the cheapest thing that stops it.
  */
 
 import { readFileSync } from "node:fs";
@@ -45,9 +43,8 @@ describe("docs/hud.svg", () => {
   });
 
   it("draws a panel tall enough to hold the rows it contains", () => {
-    // Rows are 19px apart from y=214. "Fits" is not enough: a baseline three
-    // pixels above the edge clips its own descenders, so require the same
-    // 16px breathing room the panel uses everywhere else.
+    // Rows are 19px apart from y=214. "Fits" is not enough: a baseline 3px above
+    // the edge clips its descenders, so require the panel's usual 16px.
     const PADDING = 16;
     const lastBaseline = 214 + (rows.length - 1) * 19;
     const panel = SVG.match(/<rect[^>]*y="(\d+)"[^>]*height="(\d+)"/);

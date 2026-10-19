@@ -18,11 +18,11 @@ node_modules/
 .vscode/
 .idea/
 Thumbs.db
+
+# Test output: coverage, Playwright traces and reports
 htmlcov/
 coverage.txt
 .coverage
 userscript/coverage/
-
-# Playwright's own output: traces and reports from the cross-browser suite
 userscript/test-results/
 userscript/playwright-report/

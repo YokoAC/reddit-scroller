@@ -22,12 +22,9 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.json"
 class PortUnavailableError(OSError):
     """Raised when the daemon's loopback port cannot be bound.
 
-    Subclasses OSError so callers that only care "did the bind fail" can
-    still catch OSError, while main() can catch this specific type to print
-    its friendly message without mislabeling unrelated OSErrors (e.g. from
-    hotkey hook teardown) as bind failures.
-
-    Carries the port and the original OSError that triggered it.
+    An OSError, so "did the bind fail" callers still catch it, while main() can
+    print its friendly message without mislabelling unrelated OSErrors (e.g. from
+    hook teardown). Carries the port and the original OSError.
     """
 
     def __init__(self, port: int, original: OSError) -> None:

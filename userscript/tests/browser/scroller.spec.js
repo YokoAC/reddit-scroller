@@ -1,12 +1,10 @@
 /**
- * The same behaviour, in every browser this project supports.
- *
- * The jsdom suites prove the logic; they cannot prove the engine agrees. This
- * file runs the shipped bundle in real Chromium and real Firefox against a
- * real daemon, and asserts the things that are actually engine-dependent:
- * that the page scrolls, that layout puts the right post on the focus line,
- * that navigation preserves the speed, and that KeyboardEvent.code carries
- * the numpad names the fallback handler is written against.
+ * The same behaviour in every supported browser. The jsdom suites prove the
+ * logic, not that the engine agrees: this runs the shipped bundle in real
+ * Chromium and Firefox against a real daemon, asserting what is
+ * engine-dependent: that the page scrolls, layout puts the right post on the
+ * focus line, navigation keeps the speed, and KeyboardEvent.code carries the
+ * numpad names the fallback handler expects.
  */
 
 import { expect, test } from "@playwright/test";
@@ -68,9 +66,8 @@ test.describe("the userscript in a real browser", () => {
   test("lists the daemon's real bindings in the help panel", async ({
     page,
   }) => {
-    // The panel shows itself for six seconds when a page loads, so it is
-    // already up by the time the connection is established -- and the rows in
-    // it are the bindings the daemon has just sent.
+    // The panel shows for six seconds on load, so it is up once connected, and
+    // its rows are the bindings the daemon just sent.
     const rows = page.locator("#rs-hud .rs-help-row");
     await expect(rows.first()).toBeVisible();
     await expect(rows).toHaveCount(12);
@@ -260,12 +257,10 @@ test.describe("the userscript in a real browser", () => {
 });
 
 test.describe("without a daemon", () => {
-  // The in-page handler is the only thing that works when the daemon is down,
-  // and it is keyed on KeyboardEvent.code -- exactly the sort of thing that
-  // could differ between engines. It does not, and this is what says so.
-  // The gear is a clickable child of a panel that lets every other click
-  // through, and the key it binds has to be stopped before the page sees it.
-  // Both are things only an engine can confirm.
+  // With the daemon down only the in-page handler works, keyed on
+  // KeyboardEvent.code, which could differ between engines (it does not). The
+  // gear is the one clickable child of a click-through panel, and its bound key
+  // must be stopped before the page sees it. Only an engine can confirm both.
   test("rebinds a key from the gear and uses it", async ({
     page,
   }, testInfo) => {
@@ -347,12 +342,10 @@ test.describe("without a daemon", () => {
     await expect(page.locator("#rs-hud .rs-help-row").first()).toBeVisible();
   });
 
-  // Pressed rather than sent over the wire, because the wire path never
-  // reaches the fallback handler. It is worth being honest about what this
-  // does not cover: the binding this replaced was numpad /, which Firefox
-  // spends on Quick Find, and pressing it here does not reproduce that --
-  // Playwright dispatches into content, never into browser chrome, even with
-  // accessibility.typeaheadfind.manual forced on. That was found by hand.
+  // Pressed, not sent over the wire, which never reaches the fallback handler.
+  // Not covered: the binding this replaced, numpad /, which Firefox spends on
+  // Quick Find. Playwright dispatches into content, never browser chrome, even
+  // with accessibility.typeaheadfind.manual forced on; that was found by hand.
   test("switches off and back on from the keyboard", async ({
     page,
   }, testInfo) => {

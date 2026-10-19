@@ -2,9 +2,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    // Two projects rather than environmentMatchGlobs, which vitest deprecated:
-    // most tests are pure logic and run far faster without a DOM, while the
-    // *.dom.test.js files need one.
+    // Two projects (environmentMatchGlobs is deprecated): logic runs fast
+    // without a DOM; only *.dom.test.js gets jsdom.
     projects: [
       {
         test: {
@@ -25,19 +24,13 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**"],
-      // main.js is covered by tests/main.test.js, which bundles it with
-      // esbuild and evaluates it inside a fresh jsdom window per test. That
-      // isolation is what makes those tests trustworthy -- each gets its own
-      // window, with no listeners or timers surviving from the last -- but it
-      // means v8 cannot attribute the executed code back to this file, so it
-      // would report 0% however much is exercised. Excluding it keeps the
-      // number honest about what is actually measured rather than diluting it
-      // with a file the tool is blind to.
+      // tests/main.test.js bundles main.js into a fresh jsdom window per test,
+      // so nothing leaks between tests; v8 cannot map that back to the file
+      // and would report 0%. Excluded rather than counted wrongly.
       exclude: ["src/main.js"],
       reporter: ["text", "html", "json-summary"],
-      // Every module reads 100%. These sit just below that: high enough
-      // that a real regression fails the build rather than being absorbed
-      // by slack, with enough give that one awkward-to-reach line does not.
+      // Just under the 100% every module reaches: a real regression fails,
+      // one awkward-to-reach line does not.
       thresholds: {
         statements: 98,
         branches: 97,

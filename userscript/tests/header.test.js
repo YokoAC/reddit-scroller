@@ -1,11 +1,8 @@
 /**
  * The userscript's metadata block, held to Greasy Fork's rules and to the rest
- * of the repository.
- *
- * The header is the part of the bundle a person reads before installing, the
- * part Greasy Fork parses, and the part a manager consults to decide whether a
- * script is already installed and whether a newer one exists. Each line is a
- * promise; this makes them checkable.
+ * of the repository. It is what a person reads before installing, what Greasy
+ * Fork parses, and what a manager consults to tell whether a script is
+ * installed and whether a newer one exists: each line is a checkable promise.
  *
  *   rules: https://greasyfork.org/en/help/code-rules
  *   keys:  https://greasyfork.org/en/help/meta-keys
@@ -126,9 +123,9 @@ describe("the code under the header", () => {
 
 describe("identity and updates", () => {
   it("keeps the namespace that identifies it", () => {
-    // Managers identify a script by @name plus @namespace, and Greasy Fork
-    // warns when either changes. Moving one turns every existing install into
-    // a second copy -- and two copies of this script act on every command.
+    // Managers identify a script by @name plus @namespace (Greasy Fork warns on a
+    // change). Moving one makes every install a second copy, and two copies both
+    // act on every command.
     expect(only("name")).toBe("Reddit Scroller");
     expect(only("namespace")).toBe(REPO);
   });
@@ -155,9 +152,9 @@ describe("the version", () => {
 
 describe("permissions", () => {
   it("may reach the loopback address and nothing else", () => {
-    // The daemon's 127.0.0.1 bind is the whole security boundary. A script
-    // allowed to connect anywhere else would widen it from the other side.
-    // localhost was listed from the start, and nothing ever used it.
+    // The daemon's 127.0.0.1 bind is the whole security boundary; connecting
+    // anywhere else would widen it from this side. localhost was listed from the
+    // start and never used.
     expect(values("connect")).toEqual(["127.0.0.1"]);
   });
 });

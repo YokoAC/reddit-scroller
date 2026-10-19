@@ -1,10 +1,7 @@
 /**
- * check-version-bump.mjs: the CI step that refuses a change to the userscript
- * -- its code or its header -- that does not raise its version.
- *
- * Installs update from the bundle on main, and a manager installs an update
- * only when @version rises -- so a missed bump means the change reaches
- * nobody, and nothing says so.
+ * check-version-bump.mjs: the CI step that refuses a change to the userscript's
+ * code or header that does not raise its version. Managers update only when
+ * @version rises, so a missed bump silently reaches nobody.
  */
 
 import { execFile } from "node:child_process";

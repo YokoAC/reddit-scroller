@@ -47,11 +47,9 @@ function asSpeed(value) {
   return { speed, exact: value?.exact === true };
 }
 
-// The speed is kept in two places. sessionStorage holds this tab's own, so
-// two tabs at different speeds each keep theirs across a navigation. GM
-// storage holds the one last set anywhere, which is where a new tab starts.
-// Nothing about whether we were scrolling is remembered -- a page must never
-// begin scrolling on its own.
+// Speed lives in two stores: sessionStorage keeps this tab's own across a
+// navigation; GM storage the last one set anywhere, where a new tab starts.
+// Whether we were scrolling is never remembered: a page must not start alone.
 function loadPersisted() {
   try {
     const own = asSpeed(JSON.parse(sessionStorage.getItem(STATE_KEY)));
@@ -74,9 +72,8 @@ function persist(state) {
   }
 }
 
-// Only for a speed the user set. The tab's speed is saved on every page
-// unload; storing that here too would make an untouched default "theirs",
-// and config.json's default_speed would stop applying after the first page.
+// Only for a user-set speed. The tab's speed is saved on every unload; storing
+// that here too would make an untouched default "theirs", ending default_speed.
 function persistChosen(state) {
   try {
     GM_setValue(SPEED_KEY, state);
@@ -85,18 +82,14 @@ function persistChosen(state) {
   }
 }
 
-// The port used to be a constant compiled into the bundle, which meant moving
-// it took an npm install, a rebuild and a reinstall -- the whole toolchain the
-// setup deliberately avoids. Worse, the daemon's own "port in use" message
-// tells you to edit config.json, and doing so silently left the page polling
-// the old port. Reading it from GM storage puts it where the manager already
-// shows it, editable in the same UI the script was installed from.
+// Read from GM storage, editable where the manager shows the script: moving the
+// port (as the daemon's "port in use" message says, via config.json) then needs
+// no rebuild or reinstall, and the page no longer polls the old port.
 function loadPort() {
   try {
     const stored = GM_getValue(PORT_KEY);
     if (stored === undefined || stored === null || stored === "") {
-      // Seed it so the key is visible in the manager rather than something a
-      // reader has to know to create. This is the only write.
+      // Seeded so the key is visible in the manager. This is the only write.
       GM_setValue(PORT_KEY, DEFAULT_PORT);
       return DEFAULT_PORT;
     }
@@ -107,10 +100,8 @@ function loadPort() {
   }
 }
 
-// Standby is a preference, not scroll state, so unlike "was running" it is
-// safe to remember: it can only ever make the script do less. Seeded on first
-// run for the same reason the port is -- so the key is visible in the manager
-// rather than something a reader has to know to create.
+// Standby is a preference, not scroll state, so it is safe to remember: it can
+// only make the script do less. Seeded, like the port, to show in the manager.
 function loadStandby() {
   try {
     const stored = GM_getValue(STANDBY_KEY);
@@ -132,9 +123,8 @@ function saveStandby(value) {
   }
 }
 
-// Not seeded like the port: the panel is the way to change these, so the raw
-// value does not need to be discoverable in the manager. `customised` says
-// whether the user ever changed a key; until then the daemon keeps its own.
+// Not seeded: the panel edits these. `customised` says whether the user ever
+// changed a key; until then the daemon keeps its own.
 function loadBindings() {
   try {
     const stored = GM_getValue(BINDINGS_KEY);
@@ -239,10 +229,9 @@ function boot() {
     }, FLASH_MS);
   }
 
-  // Navigation always lands paused, so the top of a thread (or the feed you
-  // came back to) is never scrolled past before you can read it. Stopping the
-  // engine matters as much as persisting: the back-forward cache can restore
-  // a page without re-running this script at all.
+  // Navigation always lands paused, so nothing is scrolled past before it is
+  // read. Stop the engine too: the back-forward cache can restore a page
+  // without re-running this script.
   function leavePaused() {
     engine.stop();
     saveSpeed();
@@ -383,15 +372,12 @@ function boot() {
     onCommands: (commands) => {
       // A background tab should not steal commands aimed at the visible one.
       if (document.hidden) return;
-      // While a speed is being typed, numpad digits are text. The daemon's
-      // hook does not know about focus, so it still sends them as commands.
-      // The page's own keys need no such check: a focused field gets them.
+      // While a speed is typed, numpad digits are text, but the focus-blind daemon
+      // hook still sends them. Page keys need no check: a focused field gets them.
       if (hud.editing) return;
-      // The same goes for a text field in the page: with Backspace bound to
-      // "back", deleting a character would navigate away from a comment
-      // draft. Only while the page has focus, though: a field stays the
-      // active element after alt-tabbing away, and the keys must keep working
-      // then -- that is what the daemon is for.
+      // Likewise a page text field: Backspace bound to "back" must not leave a
+      // comment draft. Only while the page has focus: a field stays active after
+      // alt-tab, and the keys must keep working then, which is the daemon's job.
       if (document.hasFocus() && isTyping(activeElement())) return;
       commands.forEach(handleCommand);
     },
@@ -415,12 +401,9 @@ function boot() {
           }, HELP_AUTOSHOW_MS);
         }
       }
-      // refresh(), not paint(): adopting the daemon's focus_line changes which
-      // post is current, so the selection has to be recomputed rather than
-      // merely redrawn. paint() alone left the old selection standing until
-      // the next scroll happened to correct it.
-      // After the settings above: with nothing stored, the keys shown are
-      // the ones the daemon just reported.
+      // refresh(), not paint(): the daemon's focus_line changes which post is
+      // current; paint() alone left the old selection until the next scroll.
+      // After the settings above, so with nothing stored the daemon's keys show.
       if (ok) syncKeys();
       refresh();
       panel.render();
@@ -452,9 +435,8 @@ function boot() {
       keySync = "legacy";
       pageOnly = [];
     }
-    // refresh(), not paint(): on connect this runs before the selection has
-    // been recomputed for the daemon's focus line, and the two belong in the
-    // same frame.
+    // refresh(), not paint(): on connect the selection is not yet recomputed for
+    // the daemon's focus line, and both belong in the same frame.
     refresh();
     panel.render();
   }
@@ -492,8 +474,8 @@ function boot() {
   });
 
   function toggleBindings() {
-    // The HUD's key list shows the same keys, and open it leaves the panel
-    // no room above. Closed first, so the panel measures the shorter HUD.
+    // The HUD's key list shows the same keys and leaves the panel no room above:
+    // close it first, so the panel measures the shorter HUD.
     if (!panel.open) showHelp(false);
     panel.toggle();
   }
@@ -526,9 +508,8 @@ function boot() {
     "keydown",
     (event) => {
       if (panel.handleKey(event)) return;
-      // Keys typed into Reddit's search box are text, not commands. The
-      // composed path, because Reddit's fields sit inside shadow roots and
-      // the event's target, seen from here, is only their host.
+      // Keys typed into Reddit's search box are text. Composed path: its fields sit
+      // in shadow roots, so the target seen from here is only their host.
       if (isTyping(event.composedPath?.()[0] ?? event.target)) return;
       // Binding F must not cost the user Ctrl+F.
       if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -541,9 +522,8 @@ function boot() {
       if (daemonConnected && !synced) return;
       event.preventDefault();
       event.stopPropagation();
-      // The daemon's hook fires regardless of focus, so it already delivers
-      // this press as a command; acting here too would run it twice. Unless
-      // this is a key it cannot hook.
+      // The focus-blind daemon hook already sends this press; acting here too
+      // would run it twice. Unless it is a key the daemon cannot hook.
       if (daemonConnected && !pageOnly.includes(command)) return;
       handleCommand(command);
     },

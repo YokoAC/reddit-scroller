@@ -1,16 +1,10 @@
 name: tests
 
 on:
-  # A commit on a branch is already covered by its pull request, so listening
-  # to both events ran every job twice for the same tree -- eight checks per
-  # PR, the Windows one billing at 2x for the privilege. The two runs cannot
-  # cancel each other either: the concurrency group below keys on github.ref,
-  # which is refs/heads/<branch> for a push and refs/pull/<n>/merge for a
-  # pull request, so they land in different groups by construction.
-  #
-  # The cost is that a branch with no pull request open gets no CI. That is
-  # the intended trade: work in progress is not what the pipeline is for, and
-  # workflow_dispatch is still here for the occasional exception.
+  # Pushes to main and pull requests only: listening to both ran every job twice
+  # per PR (the Windows job at 2x), and the two runs land in different
+  # concurrency groups (refs/heads/... vs refs/pull/.../merge), so neither cancels
+  # the other. A branch without a PR gets no CI; workflow_dispatch covers that.
   push:
     branches: [main]
   pull_request:
@@ -23,9 +17,8 @@ concurrency:
 
 jobs:
   daemon:
-    # Windows is the platform this actually ships on: the hotkey layer is
-    # built around Windows set-1 scan codes, so the daemon suite runs there
-    # even though Windows minutes bill at 2x.
+    # Windows, where the daemon ships: its hotkeys are Windows scan codes.
+    # Worth the 2x minutes.
     name: daemon (Windows)
     runs-on: windows-latest
     steps:
@@ -131,8 +124,7 @@ jobs:
         working-directory: userscript
 
       - name: The committed bundle must match src
-        # dist/reddit-scroller.user.js is what a user installs, so a stale
-        # commit ships code that does not match this repository.
+        # dist/ is what users install; a stale one ships code not in this repo.
         run: |
           if ! git diff --exit-code -- dist/reddit-scroller.user.js; then
             echo "::error::dist/reddit-scroller.user.js is stale. Run 'npm run build' in userscript/ and commit the result."
@@ -141,16 +133,12 @@ jobs:
         working-directory: userscript
 
       - name: A change must raise the version
-        # Installs update from the bundle on main, and a manager installs an
-        # update only when @version rises, so a change merged under the old
-        # version reaches nobody. Header lines count; comments and whitespace
-        # in the code do not (see check-version-bump.mjs).
-        #
-        # The base is HEAD^1: on a pull request, the merge commit's first
-        # parent is the base it was built on; on main, a squash merge's parent
-        # is the previous tip. Running on main as well catches two pull
-        # requests that each passed against an older main. This job is a
-        # required check, so a failure on a pull request blocks the merge.
+        # Installs update from main's bundle only when @version rises, so an
+        # unbumped change reaches nobody. Header lines count; code comments and
+        # whitespace do not (check-version-bump.mjs). Base is HEAD^1: the PR's
+        # merge base, or main's previous tip after a squash, so running on main
+        # too catches two PRs that each passed against an older main. Required
+        # check, so on a PR it blocks the merge.
         if: github.event_name != 'workflow_dispatch'
         run: |
           if ! git cat-file -e HEAD^1:userscript/dist/reddit-scroller.user.js 2>/dev/null; then
@@ -162,10 +150,8 @@ jobs:
         working-directory: userscript
 
   integration:
-    # Drives the real Transport against a real aiohttp daemon over real HTTP.
-    # Every user-visible bug so far lived in this seam rather than in either
-    # half, so this job needs both toolchains. Linux, since nothing here is
-    # platform-specific and Linux minutes bill at 1x.
+    # Real Transport against a real aiohttp daemon over HTTP: every user-visible
+    # bug so far lived in this seam. Linux: nothing platform-specific, 1x minutes.
     name: integration (both halves)
     runs-on: ubuntu-latest
     steps:
@@ -195,17 +181,12 @@ jobs:
         working-directory: userscript
 
   browsers:
-    # The bundle in the engines the README promises. Firefox and Chromium run
-    # the same spec against the same daemon, so a behaviour that holds in one
-    # and not the other fails here rather than in someone's feed.
-    name: browsers (Firefox + Chromium)
-    runs-on: ubuntu-latest
-    # Timeouts here are per-step, sized to what each step should take. The
-    # job-level number is only a backstop: it sits above the sum of the step
-    # budgets so a step always fails first. That matters because a job killed
-    # by its own timeout is *cancelled*, and a cancelled job skips straight
-    # past the step that uploads the traces -- losing the evidence exactly
-    # when something has gone wrong.
+    # Same spec, same daemon, both engines: an engine-specific behaviour fails
+    # here, not in someone's feed.
+    #
+    # Timeouts are per step; the job limit is only a backstop above their sum.
+    # A job killed by its own limit is cancelled and skips the trace upload,
+    # losing the evidence exactly when it is needed.
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
@@ -234,49 +215,32 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          # The lockfile pins @playwright/test, and the browser build a given
-          # Playwright release downloads is fixed -- so this changes exactly
-          # when the browsers would.
+          # The lockfile pins Playwright, which pins its browser builds.
           key: playwright-${{ runner.os }}-${{ hashFiles('userscript/package-lock.json') }}
 
       - name: Install the browsers
         if: steps.browser-cache.outputs.cache-hit != 'true'
-        # Binaries only -- deliberately not --with-deps.
-        #
-        # The apt half ran on every job, cache hit or not, and it is the only
-        # part of this pipeline that has ever been slow: once crawling for 25
-        # minutes, once timing out after 8 having fetched 3 of 40 packages
-        # from azure.archive.ubuntu.com. It also could not be cached, so the
-        # flakiest step was the one guaranteed to run every time.
-        #
-        # The runner image already carries what these two browsers need in
-        # order to start. What --with-deps was adding on top was largely fonts
-        # and video codecs -- fonts-ipafont-gothic, libavcodec, libvpx, libx264
-        # -- for CJK text and media playback. This suite scrolls a DOM.
-        #
-        # If a future image drops something that is genuinely needed, the
-        # symptom is unmistakable: the browser refuses to launch and Playwright
-        # names the missing library. The fix then is not to bring apt back but
-        # to run this job in mcr.microsoft.com/playwright, where the
-        # dependencies ship with the image.
+        # Binaries only, not --with-deps. The apt half ran on every job, cache or
+        # not, and was the only slow step (once 25 minutes, once a timeout at 3 of
+        # 40 packages). It added fonts and codecs (CJK, libavcodec, libvpx,
+        # libx264); the runner image already has what both browsers need to start.
+        # If an image drops something needed, the browser fails to launch and
+        # names the library: then run this job in mcr.microsoft.com/playwright
+        # rather than bringing apt back.
         timeout-minutes: 8
         run: npx playwright install firefox chromium
         working-directory: userscript
 
       - name: Run the cross-browser tests
-        # Around four minutes for twenty specs across two engines. The ceiling
-        # is what a wholly broken run costs: every spec hitting its own 60s
-        # timeout, then retried once in CI, is forty minutes of a machine
-        # telling us something we knew in the first two.
+        # About four minutes normally. The ceiling is a fully broken run: every
+        # spec hitting 60s, retried once.
         timeout-minutes: 12
         run: npm run test:browser
         working-directory: userscript
 
       - name: Upload the traces
-        # always(), not failure(): a step killed by its timeout cancels the
-        # job, and failure() does not run on a cancelled job. This is the one
-        # step that must survive that, since the traces are the whole record
-        # of what the browser was doing.
+        # always(), not failure(): failure() skips a job cancelled by a timeout,
+        # and the traces are the only record of what the browser did.
         if: always()
         uses: actions/upload-artifact@v7
         with:

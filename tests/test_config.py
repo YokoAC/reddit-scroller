@@ -40,10 +40,8 @@ def test_default_bindings_cover_every_command():
 
 
 def test_numpad_slash_is_distinct_from_the_main_row_slash(tmp_path):
-    # Scan code 53 is shared: on a US layout the main-row "/" carries it too,
-    # and only is_keypad tells the two apart. Nothing binds it by default --
-    # Firefox spends "/" on Quick Find -- but it stays bindable, so the
-    # collision stays worth asserting.
+    # Scan code 53 is shared with the US main-row "/"; only is_keypad separates
+    # them. Unbound by default (Firefox's Quick Find takes "/") but still bindable.
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"bindings": {"standby": "numpad_slash"}}))
     cfg = load_config(path)
@@ -75,8 +73,8 @@ def test_partial_file_overrides_only_named_fields(tmp_path):
 
 def test_partial_bindings_merge_over_defaults(tmp_path):
     path = tmp_path / "config.json"
-    # numpad3 rather than numpad1: the latter is standby's default now, and
-    # binding it to two commands is a config error in its own right.
+    # numpad3, not numpad1: that is standby's default, and a key bound twice is
+    # its own config error.
     path.write_text(json.dumps({"bindings": {"toggle": "numpad3"}}))
     cfg = load_config(path)
     assert cfg.bindings["toggle"] == KeyBinding(scan_code=81, is_keypad=True)
@@ -171,8 +169,8 @@ def test_the_two_new_commands_are_in_the_vocabulary():
 
 
 def test_binding_names_round_trip_back_to_key_names():
-    # The help panel renders the user's ACTUAL bindings, so the daemon has to
-    # report the key names it resolved, not just the scan codes.
+    # The help panel shows the user's actual bindings, so the daemon reports the
+    # resolved key names, not just scan codes.
     names = Config.default().binding_names()
     assert names["toggle"] == "numpad0"
     assert names["reverse"] == "numpad5"
@@ -228,8 +226,7 @@ def test_a_top_level_json_array_is_rejected(tmp_path):
 
 
 def test_a_non_object_bindings_value_is_rejected(tmp_path):
-    # A stack trace here instead of a named field would be a poor first
-    # experience for someone hand-editing the file.
+    # A named field, not a stack trace, for someone hand-editing the file.
     for bad in ("numpad0", [1, 2], 7):
         path = tmp_path / "config.json"
         path.write_text(json.dumps({"bindings": bad}))

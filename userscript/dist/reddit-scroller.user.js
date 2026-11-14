@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Reddit Scroller
 // @namespace    https://github.com/YokoAC/reddit-scroller
-// @version      0.1.5
+// @version      0.1.6
 // @description  Auto-scrolls Reddit feeds and threads, driven by the numpad, with an on-screen HUD. An optional Windows companion keeps the keys working while another application, such as a full-screen game, has focus.
 // @author       YokoAC
 // @license      MIT
@@ -37,7 +37,8 @@
     help: { feed: "toggleHelp", thread: "toggleHelp" },
     standby: { feed: "toggleStandby", thread: "toggleStandby" },
     image_prev: { feed: "imagePrev", thread: "imagePrev" },
-    image_next: { feed: "imageNext", thread: "imageNext" }
+    image_next: { feed: "imageNext", thread: "imageNext" },
+    save: { feed: "savePost", thread: "savePost" }
   };
   function resolveAction(command, mode) {
     const byMode = ACTIONS[command];
@@ -56,7 +57,10 @@
     NumpadMultiply: "help",
     Numpad1: "standby",
     Numpad4: "image_prev",
-    Numpad6: "image_next"
+    Numpad6: "image_next",
+    // Last: parseStored resolves clashes in this order, so a stored binding
+    // that already uses Numpad3 keeps it and save starts unbound.
+    Numpad3: "save"
   };
   var DEFAULT_BINDINGS = {
     toggle: "numpad0",
@@ -70,7 +74,8 @@
     help: "numpad_star",
     standby: "numpad1",
     image_prev: "numpad4",
-    image_next: "numpad6"
+    image_next: "numpad6",
+    save: "numpad3"
   };
 
   // src/bindings.js
@@ -92,7 +97,8 @@
       help: "KeyH",
       standby: "KeyO",
       image_prev: "ArrowLeft",
-      image_next: "ArrowRight"
+      image_next: "ArrowRight",
+      save: "KeyB"
     }
   };
   var COMMANDS = Object.keys(PRESETS.numpad);
@@ -217,6 +223,27 @@
     if (!button || button.getAttribute("aria-disabled") === "true") return false;
     button.click();
     return true;
+  }
+
+  // src/save.js
+  var ITEM = '#post-overflow-save [role="menuitem"]';
+  var SAVED_CLASS = "rs-saved";
+  var SAVED_FLASH_MS = 1e3;
+  var RESAVE_GUARD_MS = 5e3;
+  var lastSaved = /* @__PURE__ */ new WeakMap();
+  function savePost(post, now = Date.now()) {
+    if (!post) return "can't save";
+    const item = deepQuery(post, ITEM);
+    if (!item) return "can't save";
+    const label = item.textContent.trim();
+    if (label === "Remove from saved") return "already saved";
+    if (label !== "Save") return "can't save";
+    if (now - (lastSaved.get(post) ?? -Infinity) < RESAVE_GUARD_MS) {
+      return "already saved";
+    }
+    item.click();
+    lastSaved.set(post, now);
+    return "saved";
   }
 
   // src/selection.js
@@ -428,6 +455,20 @@
   outline-offset: 2px;
   border-radius: 8px;
 }
+/* The outline turns green while a ring ripples out from it. box-shadow, since
+   the outline's !important would beat an animation of the outline itself. */
+.${SAVED_CLASS} {
+  outline-color: #3fb950 !important;
+  border-radius: 8px;
+  animation: rs-saved ${SAVED_FLASH_MS}ms ease-out;
+}
+@keyframes rs-saved {
+  from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+  to { box-shadow: 0 0 0 19px rgba(63, 185, 80, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .${SAVED_CLASS} { animation: none; }
+}
 `;
   var KEY_LABELS = {
     numpad0: "Num 0",
@@ -456,6 +497,7 @@
     ["prev", "previous post / page up"],
     ["image_prev", "previous image in a gallery"],
     ["image_next", "next image in a gallery"],
+    ["save", "save post for later"],
     ["open", "open selected post"],
     ["back", "back to the feed"],
     ["help", "show or hide the key list"],
@@ -1389,6 +1431,14 @@
       },
       imageNext() {
         stepGallery(galleryPost(), "next");
+      },
+      savePost() {
+        const post = galleryPost();
+        const result = savePost(post);
+        flash(result);
+        if (result !== "saved") return;
+        post.classList.add(SAVED_CLASS);
+        setTimeout(() => post.classList.remove(SAVED_CLASS), SAVED_FLASH_MS);
       },
       noop() {
       }

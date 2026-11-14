@@ -67,6 +67,7 @@ const SETTINGS = {
     standby: "numpad1",
     image_prev: "numpad4",
     image_next: "numpad6",
+    save: "numpad3",
   },
 };
 
@@ -84,6 +85,7 @@ const NUMPAD_CODES = {
   standby: "Numpad1",
   image_prev: "Numpad4",
   image_next: "Numpad6",
+  save: "Numpad3",
 };
 
 function feedHtml() {
@@ -654,6 +656,88 @@ describe("gallery keys", () => {
     await page.send("standby", "image_next");
     for (const count of Object.values(counts)) {
       expect(count).toEqual({ prev: 0, next: 0 });
+    }
+  });
+});
+
+describe("save key", () => {
+  /** Give every post Reddit's hidden Save item; return click counts by title. */
+  function addSaveItems(page) {
+    const counts = {};
+    for (const post of page.window.document.querySelectorAll("shreddit-post")) {
+      const title = post.getAttribute("post-title");
+      counts[title] = 0;
+      const menu = page.window.document.createElement(
+        "shreddit-post-overflow-menu",
+      );
+      menu.attachShadow({ mode: "open" }).innerHTML =
+        '<li id="post-overflow-save"><div role="menuitem"><span>Save</span></div></li>';
+      menu.shadowRoot
+        .querySelector('[role="menuitem"]')
+        .addEventListener("click", () => {
+          counts[title]++;
+        });
+      post.append(menu);
+    }
+    return counts;
+  }
+
+  it("saves the selected post in the feed", async () => {
+    page = await Page.open();
+    const counts = addSaveItems(page);
+    const selected = page.selectedTitle;
+    expect(selected).not.toBeNull();
+    await page.send("save");
+    for (const [title, count] of Object.entries(counts)) {
+      expect(count, title).toBe(title === selected ? 1 : 0);
+    }
+    expect(page.hud(".rs-flash")).toBe("SAVED");
+  });
+
+  it("flashes the saved post, then lets it go", async () => {
+    page = await Page.open();
+    addSaveItems(page);
+    const post = page.window.document.querySelector(".rs-selected");
+    await page.send("save");
+    expect(post.classList.contains("rs-saved")).toBe(true);
+    await page.settle(1200);
+    expect(post.classList.contains("rs-saved")).toBe(false);
+  });
+
+  it("does not flash a post it did not save", async () => {
+    page = await Page.open();
+    addSaveItems(page);
+    await page.send("save", "save");
+    await page.settle(1200);
+    await page.send("save");
+    const post = page.window.document.querySelector(".rs-selected");
+    expect(page.hud(".rs-flash")).toBe("ALREADY SAVED");
+    expect(post.classList.contains("rs-saved")).toBe(false);
+  });
+
+  it("saves the post in a thread", async () => {
+    page = await Page.open({
+      url: "https://www.reddit.com/r/a/comments/1/one/",
+    });
+    const counts = addSaveItems(page);
+    await page.send("save");
+    expect(counts.First).toBe(1);
+    expect(counts.Second).toBe(0);
+  });
+
+  it("works from the keyboard without the daemon", async () => {
+    page = await Page.open({ daemonUp: false });
+    const counts = addSaveItems(page);
+    await page.press("Numpad3");
+    expect(counts[page.selectedTitle]).toBe(1);
+  });
+
+  it("does nothing on standby", async () => {
+    page = await Page.open();
+    const counts = addSaveItems(page);
+    await page.send("standby", "save");
+    for (const count of Object.values(counts)) {
+      expect(count).toBe(0);
     }
   });
 });

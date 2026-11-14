@@ -1,6 +1,7 @@
 /** The on-screen readout, sized to be legible from another monitor. */
 
 import { DEFAULT_BINDINGS } from "./commands.js";
+import { SAVED_CLASS, SAVED_FLASH_MS } from "./save.js";
 import { HIGHLIGHT_CLASS } from "./selection.js";
 
 export const HUD_ID = "rs-hud";
@@ -113,6 +114,20 @@ const CSS = `
   outline-offset: 2px;
   border-radius: 8px;
 }
+/* The outline turns green while a ring ripples out from it. box-shadow, since
+   the outline's !important would beat an animation of the outline itself. */
+.${SAVED_CLASS} {
+  outline-color: #3fb950 !important;
+  border-radius: 8px;
+  animation: rs-saved ${SAVED_FLASH_MS}ms ease-out;
+}
+@keyframes rs-saved {
+  from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+  to { box-shadow: 0 0 0 19px rgba(63, 185, 80, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .${SAVED_CLASS} { animation: none; }
+}
 `;
 
 const KEY_LABELS = {
@@ -144,6 +159,7 @@ export const HELP_ORDER = [
   ["prev", "previous post / page up"],
   ["image_prev", "previous image in a gallery"],
   ["image_next", "next image in a gallery"],
+  ["save", "save post for later"],
   ["open", "open selected post"],
   ["back", "back to the feed"],
   ["help", "show or hide the key list"],

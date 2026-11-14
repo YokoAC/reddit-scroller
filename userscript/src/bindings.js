@@ -23,6 +23,7 @@ export const PRESETS = {
     standby: "KeyO",
     image_prev: "ArrowLeft",
     image_next: "ArrowRight",
+    save: "KeyB",
   },
 };
 

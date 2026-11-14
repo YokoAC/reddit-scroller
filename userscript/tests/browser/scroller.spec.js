@@ -70,7 +70,7 @@ test.describe("the userscript in a real browser", () => {
     // its rows are the bindings the daemon just sent.
     const rows = page.locator("#rs-hud .rs-help-row");
     await expect(rows.first()).toBeVisible();
-    await expect(rows).toHaveCount(12);
+    await expect(rows).toHaveCount(13);
     await expect(rows.locator(".rs-help-key").first()).toHaveText("Num 0");
 
     daemon.send("help");

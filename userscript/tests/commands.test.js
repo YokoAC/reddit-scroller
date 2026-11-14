@@ -106,6 +106,10 @@ describe("the new commands", () => {
     expect(commandForKeyCode("Numpad6")).toBe("image_next");
   });
 
+  it("puts save on numpad 3 in either mode", () => {
+    expect(commandForKeyCode("Numpad3")).toBe("save");
+  });
+
   it("leaves the numpad slash alone, because Firefox has spent it", () => {
     // "/" opens Quick Find, which takes focus away from the page and stops
     // the fallback handler seeing the next press at all.
@@ -129,6 +133,7 @@ describe("resolveAction covers every command in both modes", () => {
     standby: ["toggleStandby", "toggleStandby"],
     image_prev: ["imagePrev", "imagePrev"],
     image_next: ["imageNext", "imageNext"],
+    save: ["savePost", "savePost"],
   };
 
   it.each(Object.entries(EXPECTED))("%s", (command, [feed, thread]) => {

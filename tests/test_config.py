@@ -30,6 +30,7 @@ def test_default_bindings_cover_every_command():
         "standby",
         "image_prev",
         "image_next",
+        "save",
     }
     assert cfg.bindings["toggle"] == KeyBinding(scan_code=82, is_keypad=True)
     assert cfg.bindings["next"] == KeyBinding(scan_code=80, is_keypad=True)
@@ -37,6 +38,7 @@ def test_default_bindings_cover_every_command():
     assert cfg.bindings["standby"] == KeyBinding(scan_code=79, is_keypad=True)
     assert cfg.bindings["image_prev"] == KeyBinding(scan_code=75, is_keypad=True)
     assert cfg.bindings["image_next"] == KeyBinding(scan_code=77, is_keypad=True)
+    assert cfg.bindings["save"] == KeyBinding(scan_code=81, is_keypad=True)
 
 
 def test_numpad_slash_is_distinct_from_the_main_row_slash(tmp_path):
@@ -73,12 +75,26 @@ def test_partial_file_overrides_only_named_fields(tmp_path):
 
 def test_partial_bindings_merge_over_defaults(tmp_path):
     path = tmp_path / "config.json"
-    # numpad3, not numpad1: that is standby's default, and a key bound twice is
-    # its own config error.
-    path.write_text(json.dumps({"bindings": {"toggle": "numpad3"}}))
+    path.write_text(json.dumps({"bindings": {"toggle": "numpad7"}}))
     cfg = load_config(path)
-    assert cfg.bindings["toggle"] == KeyBinding(scan_code=81, is_keypad=True)
+    assert cfg.bindings["toggle"] == KeyBinding(scan_code=71, is_keypad=True)
     assert cfg.bindings["back"] == Config.default().bindings["back"]
+
+
+def test_an_explicit_key_takes_precedence_over_a_default(tmp_path):
+    # A config written before a command existed may already use its default key.
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": {"toggle": "numpad1"}}))
+    cfg = load_config(path)
+    assert cfg.bindings["toggle"] == KeyBinding(scan_code=79, is_keypad=True)
+    assert "standby" not in cfg.bindings
+
+
+def test_one_key_bound_twice_explicitly_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"bindings": {"toggle": "numpad7", "open": "numpad7"}}))
+    with pytest.raises(ConfigError, match="numpad7"):
+        load_config(path)
 
 
 def test_unknown_command_is_rejected(tmp_path):
@@ -92,13 +108,6 @@ def test_unknown_key_name_is_rejected(tmp_path):
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"bindings": {"toggle": "banana"}}))
     with pytest.raises(ConfigError, match="banana"):
-        load_config(path)
-
-
-def test_duplicate_key_across_two_commands_is_rejected(tmp_path):
-    path = tmp_path / "config.json"
-    path.write_text(json.dumps({"bindings": {"toggle": "numpad2"}}))
-    with pytest.raises(ConfigError, match="numpad2"):
         load_config(path)
 
 

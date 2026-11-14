@@ -12,7 +12,7 @@ from typing import Any
 from aiohttp import web
 
 from .bus import EventBus
-from .config import Config, ConfigError, KeyBinding, load_config
+from .config import COMMANDS, Config, ConfigError, KeyBinding, load_config
 from .hotkeys import HotkeyListener
 from .server import create_app
 
@@ -40,6 +40,9 @@ def log(message: str) -> None:
 def log_bindings(bindings: dict[str, KeyBinding]) -> None:
     for command, binding in sorted(bindings.items()):
         log(f"  {command:<10} scan={binding.scan_code} keypad={binding.is_keypad}")
+    # A key named in config.json takes it from the command whose default it is.
+    for command in sorted(COMMANDS - bindings.keys()):
+        log(f"  {command:<10} unbound")
 
 
 async def run(

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="392" height="461" viewBox="0 0 392 461" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" width="392" height="480" viewBox="0 0 392 480" role="img"
      aria-label="The Reddit Scroller HUD: scrolling at 135 pixels per second in the feed, with the hotkey panel open.">
   <title>Reddit Scroller HUD</title>
   <desc>Colours, sizes and the speed bar are taken from the stylesheet in userscript/src/hud.js.
@@ -27,7 +27,7 @@
     </style>
   </defs>
 
-  <rect x="16" y="16" width="320" height="429" rx="10" fill="#101014" fill-opacity="0.92" filter="url(#shadow)"/>
+  <rect x="16" y="16" width="320" height="448" rx="10" fill="#101014" fill-opacity="0.92" filter="url(#shadow)"/>
 
   <!-- state -->
   <text class="ui status" x="32" y="53">SCROLLING</text>
@@ -66,13 +66,15 @@
     <text class="ui hact"  x="112" y="328">previous image in a gallery</text>
     <text class="mono hkey" x="32" y="347">Num 6</text>
     <text class="ui hact"  x="112" y="347">next image in a gallery</text>
-    <text class="mono hkey" x="32" y="366">Num Enter</text>
-    <text class="ui hact"  x="112" y="366">open selected post</text>
-    <text class="mono hkey" x="32" y="385">Num .</text>
-    <text class="ui hact"  x="112" y="385">back to the feed</text>
-    <text class="mono hkey" x="32" y="404">Num *</text>
-    <text class="ui hact"  x="112" y="404">show or hide the key list</text>
-    <text class="mono hkey" x="32" y="423">Num 1</text>
-    <text class="ui hact"  x="112" y="423">switch the script off / on</text>
+    <text class="mono hkey" x="32" y="366">Num 3</text>
+    <text class="ui hact"  x="112" y="366">save post for later</text>
+    <text class="mono hkey" x="32" y="385">Num Enter</text>
+    <text class="ui hact"  x="112" y="385">open selected post</text>
+    <text class="mono hkey" x="32" y="404">Num .</text>
+    <text class="ui hact"  x="112" y="404">back to the feed</text>
+    <text class="mono hkey" x="32" y="423">Num *</text>
+    <text class="ui hact"  x="112" y="423">show or hide the key list</text>
+    <text class="mono hkey" x="32" y="442">Num 1</text>
+    <text class="ui hact"  x="112" y="442">switch the script off / on</text>
   </g>
 </svg>

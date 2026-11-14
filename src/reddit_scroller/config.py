@@ -23,6 +23,7 @@ COMMANDS = frozenset(
         "standby",
         "image_prev",
         "image_next",
+        "save",
     }
 )
 
@@ -60,6 +61,7 @@ DEFAULT_BINDINGS: dict[str, str] = {
     "standby": "numpad1",
     "image_prev": "numpad4",
     "image_next": "numpad6",
+    "save": "numpad3",
 }
 
 # KEY_CODES values are unique, so the mapping inverts cleanly. The help panel
@@ -249,7 +251,10 @@ def load_config(path: Path) -> Config:
             f"got {bindings_raw!r}"
         )
 
-    binding_names = dict(DEFAULT_BINDINGS)
+    # A key the user chose wins over a default: a config written before a
+    # command existed may already use that command's default key.
+    claimed = set(bindings_raw.values())
+    binding_names = {c: k for c, k in DEFAULT_BINDINGS.items() if k not in claimed}
     binding_names.update(bindings_raw)
 
     known = {f for f in Config.__dataclass_fields__ if f != "bindings"}

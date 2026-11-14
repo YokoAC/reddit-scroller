@@ -195,6 +195,37 @@ The target is the selected post in the feed and the post itself in a thread.
 At either end Reddit marks the button `aria-disabled="true"`, and the key does
 nothing.
 
+### Saving a post: Reddit's own Save, without its menu
+
+Num 3 (B in the laptop preset) saves a post to the account's Saved list, so a
+thread seen mid-game can be read properly later, on any device. The target is
+the gallery keys': the selected post in the feed, the post itself in a thread.
+The script stores nothing. A list of its own would stay in one browser, and
+Reddit's already exists.
+
+Save lives in the post's "…" menu, but Reddit renders the menu's items whether
+or not it is open: `li#post-overflow-save [role="menuitem"]`, inside the open
+shadow root of `shreddit-post-overflow-menu`. Clicking that item saves the post
+with the menu closed, so nothing flashes on screen. The lookup is the gallery's,
+which already descends into open shadow roots. Calling Reddit's save endpoint
+directly was rejected: it is undocumented, needs the page's CSRF token, and
+would act on the account behind Reddit's own interface.
+
+The key only ever saves. The item toggles, so a second press would quietly
+unsave the post the user just chose to keep. Its label tells the states apart:
+"Save", then "Remove from saved". The key clicks only on "Save" and the HUD says
+"saved"; on "Remove from saved" it says "already saved". Any other label, or no
+item at all, clicks nothing and says "can't save", so a renamed or translated
+menu fails safe instead of toggling. A press within five seconds of a save
+counts as already saved too, since Reddit relabels the item only once its
+request returns. A save also flashes the post: its outline turns green and a
+ring ripples out from it, so the HUD is not the only place to look mid-game.
+
+A key the user already chose wins over the new default, on both sides: a
+`config.json` or stored binding that puts Num 3 on another command keeps it,
+and save starts unbound there. The daemon used to reject any key bound twice,
+default or not, which would have stopped such a config from loading at all.
+
 ### Rebinding: one panel for both halves
 
 The defaults are numpad keys, and a keyboard without a numpad could not use the
@@ -332,6 +363,9 @@ contract drifted twice with every test still green.
 - **Gallery keys follow Reddit's markup.** They rely on the carousel's
   `prevButton` and `nextButton` slots; if those change, `gallery.js` needs
   updating and the keys do nothing meanwhile.
+- **Save follows Reddit's markup and its English labels.** It needs
+  `#post-overflow-save` and the label "Save"; otherwise the key does nothing
+  and the HUD says "can't save".
 - **The port is defined twice** — `port` in `config.json` and an `rs-port`
   value in GM storage — and they must agree. The duplication is unavoidable:
   the userscript cannot ask the daemon which port it is on without already

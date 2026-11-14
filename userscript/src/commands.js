@@ -17,6 +17,7 @@ const ACTIONS = {
   standby: { feed: "toggleStandby", thread: "toggleStandby" },
   image_prev: { feed: "imagePrev", thread: "imagePrev" },
   image_next: { feed: "imageNext", thread: "imageNext" },
+  save: { feed: "savePost", thread: "savePost" },
 };
 
 export function resolveAction(command, mode) {
@@ -40,6 +41,9 @@ export const KEY_CODES = {
   Numpad1: "standby",
   Numpad4: "image_prev",
   Numpad6: "image_next",
+  // Last: parseStored resolves clashes in this order, so a stored binding
+  // that already uses Numpad3 keeps it and save starts unbound.
+  Numpad3: "save",
 };
 
 /**
@@ -60,6 +64,7 @@ export const DEFAULT_BINDINGS = {
   standby: "numpad1",
   image_prev: "numpad4",
   image_next: "numpad6",
+  save: "numpad3",
 };
 
 export function commandForKeyCode(code) {

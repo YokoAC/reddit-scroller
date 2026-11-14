@@ -6,7 +6,7 @@ const BUTTONS = {
 };
 
 /** The first match under `root`, looking inside open shadow roots too. */
-function deepQuery(root, selector) {
+export function deepQuery(root, selector) {
   const direct = root.querySelector(selector);
   if (direct) return direct;
   for (const host of [root, ...root.querySelectorAll("*")]) {

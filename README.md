@@ -141,6 +141,7 @@ means it went through.
 | Numpad `5` | flip scroll direction | flip scroll direction |
 | Numpad `8` / `2` | select previous / next post | scroll up / down a screen |
 | Numpad `4` / `6` | previous / next image in the selected post's gallery | previous / next image in the post's gallery |
+| Numpad `3` | save the selected post to your Reddit Saved list | save the post |
 | Numpad `Enter` | open the selected post | — |
 | Numpad `.` | — | back to the feed |
 | Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
@@ -186,7 +187,8 @@ Click the gear on the HUD, or *Key bindings* in your userscript manager's menu.
 
 - **Laptop** is a preset for keyboards without a numpad: Space pauses, the arrows
   pick posts and gallery images, Enter and Backspace open and go back, `F` / `S`
-  change speed, `R` reverses, `H` shows the keys, `O` switches the script off.
+  change speed, `R` reverses, `B` saves, `H` shows the keys, `O` switches the
+  script off.
 - **To change one key**, click its row and press the new key. A key already in use
   moves over.
 - **Numpad (default)** puts everything back.
@@ -218,14 +220,15 @@ you leave out keeps its default.
 
 `bindings` are the daemon's keys until you change one in the panel; from then on
 [the panel's keys](#changing-the-keys) apply to both. `config.json` accepts numpad
-names only; the panel accepts any key.
+names only; the panel accepts any key. A key you name takes it from the command
+whose default it is, which is then unbound; the daemon's startup log says so.
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to
 `numpad_slash` is a poor idea in Firefox, which spends `/` on Quick Find.
 
 Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`,
-`help`, `standby`, `image_prev`, `image_next`.
+`help`, `standby`, `image_prev`, `image_next`, `save`.
 
 `config.json` is gitignored — it's local to your machine. `config.example.json` is
 the committed template.

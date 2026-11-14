@@ -17,6 +17,7 @@
     "help": "numpad_star",
     "standby": "numpad1",
     "image_prev": "numpad4",
-    "image_next": "numpad6"
+    "image_next": "numpad6",
+    "save": "numpad3"
   }
 }

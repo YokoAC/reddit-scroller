@@ -218,6 +218,11 @@ unsave the post the user just chose to keep. Its label tells the states apart:
 item at all, clicks nothing and says "can't save", so a renamed or translated
 menu fails safe instead of toggling.
 
+A key the user already chose wins over the new default, on both sides: a
+`config.json` or stored binding that puts Num 3 on another command keeps it,
+and save starts unbound there. The daemon used to reject any key bound twice,
+default or not, which would have stopped such a config from loading at all.
+
 ### Rebinding: one panel for both halves
 
 The defaults are numpad keys, and a keyboard without a numpad could not use the

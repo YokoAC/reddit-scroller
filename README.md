@@ -225,7 +225,7 @@ Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_min
 `numpad_slash` is a poor idea in Firefox, which spends `/` on Quick Find.
 
 Commands: `toggle`, `open`, `back`, `faster`, `slower`, `prev`, `next`, `reverse`,
-`help`, `standby`, `image_prev`, `image_next`.
+`help`, `standby`, `image_prev`, `image_next`, `save`.
 
 `config.json` is gitignored — it's local to your machine. `config.example.json` is
 the committed template.

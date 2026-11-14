@@ -700,7 +700,7 @@ describe("save key", () => {
     const post = page.window.document.querySelector(".rs-selected");
     await page.send("save");
     expect(post.classList.contains("rs-saved")).toBe(true);
-    await page.settle(1000);
+    await page.settle(1200);
     expect(post.classList.contains("rs-saved")).toBe(false);
   });
 
@@ -708,7 +708,7 @@ describe("save key", () => {
     page = await Page.open();
     addSaveItems(page);
     await page.send("save", "save");
-    await page.settle(1000);
+    await page.settle(1200);
     await page.send("save");
     const post = page.window.document.querySelector(".rs-selected");
     expect(page.hud(".rs-flash")).toBe("ALREADY SAVED");

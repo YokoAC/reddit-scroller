@@ -123,7 +123,7 @@ const CSS = `
 }
 @keyframes rs-saved {
   from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
-  to { box-shadow: 0 0 0 16px rgba(63, 185, 80, 0); }
+  to { box-shadow: 0 0 0 19px rgba(63, 185, 80, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .${SAVED_CLASS} { animation: none; }

@@ -228,7 +228,7 @@
   // src/save.js
   var ITEM = '#post-overflow-save [role="menuitem"]';
   var SAVED_CLASS = "rs-saved";
-  var SAVED_FLASH_MS = 800;
+  var SAVED_FLASH_MS = 1e3;
   var RESAVE_GUARD_MS = 5e3;
   var lastSaved = /* @__PURE__ */ new WeakMap();
   function savePost(post, now = Date.now()) {
@@ -464,7 +464,7 @@
 }
 @keyframes rs-saved {
   from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
-  to { box-shadow: 0 0 0 16px rgba(63, 185, 80, 0); }
+  to { box-shadow: 0 0 0 19px rgba(63, 185, 80, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .${SAVED_CLASS} { animation: none; }

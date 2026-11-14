@@ -235,3 +235,14 @@ async def test_keys_sent_by_the_userscript_reach_the_real_listener():
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+def test_the_binding_log_names_unbound_commands(capsys):
+    # An explicit key can take a default's key, leaving that command unbound;
+    # without this line the startup log would never mention it.
+    bindings = dict(Config.default().bindings)
+    del bindings["standby"]
+    daemon.log_bindings(bindings)
+    out = capsys.readouterr().out
+    assert "standby    unbound" in out
+    assert "toggle     scan=82" in out

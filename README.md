@@ -220,7 +220,8 @@ you leave out keeps its default.
 
 `bindings` are the daemon's keys until you change one in the panel; from then on
 [the panel's keys](#changing-the-keys) apply to both. `config.json` accepts numpad
-names only; the panel accepts any key.
+names only; the panel accepts any key. A key you name takes it from the command
+whose default it is, which is then unbound; the daemon's startup log says so.
 
 Valid key names: `numpad0`–`numpad9`, `numpad_dot`, `numpad_plus`, `numpad_minus`,
 `numpad_star`, `numpad_slash`, `numpad_enter`. Binding anything to

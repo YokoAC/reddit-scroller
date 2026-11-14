@@ -1,6 +1,7 @@
 /** The on-screen readout, sized to be legible from another monitor. */
 
 import { DEFAULT_BINDINGS } from "./commands.js";
+import { SAVED_CLASS, SAVED_FLASH_MS } from "./save.js";
 import { HIGHLIGHT_CLASS } from "./selection.js";
 
 export const HUD_ID = "rs-hud";
@@ -112,6 +113,20 @@ const CSS = `
   outline: 3px solid #58a6ff !important;
   outline-offset: 2px;
   border-radius: 8px;
+}
+/* The outline turns green while a ring ripples out from it. box-shadow, since
+   the outline's !important would beat an animation of the outline itself. */
+.${SAVED_CLASS} {
+  outline-color: #3fb950 !important;
+  border-radius: 8px;
+  animation: rs-saved ${SAVED_FLASH_MS}ms ease-out;
+}
+@keyframes rs-saved {
+  from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+  to { box-shadow: 0 0 0 16px rgba(63, 185, 80, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .${SAVED_CLASS} { animation: none; }
 }
 `;
 

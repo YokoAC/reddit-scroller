@@ -694,6 +694,27 @@ describe("save key", () => {
     expect(page.hud(".rs-flash")).toBe("SAVED");
   });
 
+  it("flashes the saved post, then lets it go", async () => {
+    page = await Page.open();
+    addSaveItems(page);
+    const post = page.window.document.querySelector(".rs-selected");
+    await page.send("save");
+    expect(post.classList.contains("rs-saved")).toBe(true);
+    await page.settle(1000);
+    expect(post.classList.contains("rs-saved")).toBe(false);
+  });
+
+  it("does not flash a post it did not save", async () => {
+    page = await Page.open();
+    addSaveItems(page);
+    await page.send("save", "save");
+    await page.settle(1000);
+    await page.send("save");
+    const post = page.window.document.querySelector(".rs-selected");
+    expect(page.hud(".rs-flash")).toBe("ALREADY SAVED");
+    expect(post.classList.contains("rs-saved")).toBe(false);
+  });
+
   it("saves the post in a thread", async () => {
     page = await Page.open({
       url: "https://www.reddit.com/r/a/comments/1/one/",

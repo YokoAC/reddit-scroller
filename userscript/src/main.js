@@ -13,7 +13,7 @@ import { detectMode, resolveAction } from "./commands.js";
 import { stepGallery } from "./gallery.js";
 import { HELP_ORDER, HUD_ID, Hud } from "./hud.js";
 import { BindingsPanel } from "./panel.js";
-import { savePost } from "./save.js";
+import { SAVED_CLASS, SAVED_FLASH_MS, savePost } from "./save.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
 import {
@@ -337,7 +337,12 @@ function boot() {
     },
     savePost() {
       // Replaces the command name handleCommand just flashed with the outcome.
-      flash(savePost(galleryPost()));
+      const post = galleryPost();
+      const result = savePost(post);
+      flash(result);
+      if (result !== "saved") return;
+      post.classList.add(SAVED_CLASS);
+      setTimeout(() => post.classList.remove(SAVED_CLASS), SAVED_FLASH_MS);
     },
     noop() {},
   };

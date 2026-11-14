@@ -218,7 +218,8 @@ unsave the post the user just chose to keep. Its label tells the states apart:
 item at all, clicks nothing and says "can't save", so a renamed or translated
 menu fails safe instead of toggling. A press within five seconds of a save
 counts as already saved too, since Reddit relabels the item only once its
-request returns.
+request returns. A save also flashes the post: its outline turns green and a
+ring ripples out from it, so the HUD is not the only place to look mid-game.
 
 A key the user already chose wins over the new default, on both sides: a
 `config.json` or stored binding that puts Num 3 on another command keeps it,

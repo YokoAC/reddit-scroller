@@ -4,6 +4,10 @@ import { deepQuery } from "./gallery.js";
 
 const ITEM = '#post-overflow-save [role="menuitem"]';
 
+// A saved post briefly flashes green; the class comes off when it is done.
+export const SAVED_CLASS = "rs-saved";
+export const SAVED_FLASH_MS = 800;
+
 // Reddit relabels the item only once its request returns, so a quick second
 // press would still read "Save" and unsave the post.
 const RESAVE_GUARD_MS = 5000;

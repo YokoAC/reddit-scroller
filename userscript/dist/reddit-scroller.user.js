@@ -225,6 +225,27 @@
     return true;
   }
 
+  // src/save.js
+  var ITEM = '#post-overflow-save [role="menuitem"]';
+  var SAVED_CLASS = "rs-saved";
+  var SAVED_FLASH_MS = 800;
+  var RESAVE_GUARD_MS = 5e3;
+  var lastSaved = /* @__PURE__ */ new WeakMap();
+  function savePost(post, now = Date.now()) {
+    if (!post) return "can't save";
+    const item = deepQuery(post, ITEM);
+    if (!item) return "can't save";
+    const label = item.textContent.trim();
+    if (label === "Remove from saved") return "already saved";
+    if (label !== "Save") return "can't save";
+    if (now - (lastSaved.get(post) ?? -Infinity) < RESAVE_GUARD_MS) {
+      return "already saved";
+    }
+    item.click();
+    lastSaved.set(post, now);
+    return "saved";
+  }
+
   // src/selection.js
   var HIGHLIGHT_CLASS = "rs-selected";
   var POST_SELECTOR = "shreddit-post";
@@ -433,6 +454,20 @@
   outline: 3px solid #58a6ff !important;
   outline-offset: 2px;
   border-radius: 8px;
+}
+/* The outline turns green while a ring ripples out from it. box-shadow, since
+   the outline's !important would beat an animation of the outline itself. */
+.${SAVED_CLASS} {
+  outline-color: #3fb950 !important;
+  border-radius: 8px;
+  animation: rs-saved ${SAVED_FLASH_MS}ms ease-out;
+}
+@keyframes rs-saved {
+  from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+  to { box-shadow: 0 0 0 16px rgba(63, 185, 80, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .${SAVED_CLASS} { animation: none; }
 }
 `;
   var KEY_LABELS = {
@@ -882,25 +917,6 @@
       this.render();
     }
   };
-
-  // src/save.js
-  var ITEM = '#post-overflow-save [role="menuitem"]';
-  var RESAVE_GUARD_MS = 5e3;
-  var lastSaved = /* @__PURE__ */ new WeakMap();
-  function savePost(post, now = Date.now()) {
-    if (!post) return "can't save";
-    const item = deepQuery(post, ITEM);
-    if (!item) return "can't save";
-    const label = item.textContent.trim();
-    if (label === "Remove from saved") return "already saved";
-    if (label !== "Save") return "can't save";
-    if (now - (lastSaved.get(post) ?? -Infinity) < RESAVE_GUARD_MS) {
-      return "already saved";
-    }
-    item.click();
-    lastSaved.set(post, now);
-    return "saved";
-  }
 
   // src/scroll.js
   var MAX_FRAME_SECONDS = 0.1;
@@ -1417,7 +1433,12 @@
         stepGallery(galleryPost(), "next");
       },
       savePost() {
-        flash(savePost(galleryPost()));
+        const post = galleryPost();
+        const result = savePost(post);
+        flash(result);
+        if (result !== "saved") return;
+        post.classList.add(SAVED_CLASS);
+        setTimeout(() => post.classList.remove(SAVED_CLASS), SAVED_FLASH_MS);
       },
       noop() {
       }

@@ -13,6 +13,7 @@ import { detectMode, resolveAction } from "./commands.js";
 import { stepGallery } from "./gallery.js";
 import { HELP_ORDER, HUD_ID, Hud } from "./hud.js";
 import { BindingsPanel } from "./panel.js";
+import { savePost } from "./save.js";
 import { ScrollEngine } from "./scroll.js";
 import { Selection } from "./selection.js";
 import {
@@ -333,6 +334,10 @@ function boot() {
     },
     imageNext() {
       stepGallery(galleryPost(), "next");
+    },
+    savePost() {
+      // Replaces the command name handleCommand just flashed with the outcome.
+      flash(savePost(galleryPost()));
     },
     noop() {},
   };

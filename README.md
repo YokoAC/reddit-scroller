@@ -141,6 +141,7 @@ means it went through.
 | Numpad `5` | flip scroll direction | flip scroll direction |
 | Numpad `8` / `2` | select previous / next post | scroll up / down a screen |
 | Numpad `4` / `6` | previous / next image in the selected post's gallery | previous / next image in the post's gallery |
+| Numpad `3` | save the selected post to your Reddit Saved list | save the post |
 | Numpad `Enter` | open the selected post | — |
 | Numpad `.` | — | back to the feed |
 | Numpad `*` | show / hide the hotkey panel | show / hide the hotkey panel |
@@ -186,7 +187,8 @@ Click the gear on the HUD, or *Key bindings* in your userscript manager's menu.
 
 - **Laptop** is a preset for keyboards without a numpad: Space pauses, the arrows
   pick posts and gallery images, Enter and Backspace open and go back, `F` / `S`
-  change speed, `R` reverses, `H` shows the keys, `O` switches the script off.
+  change speed, `R` reverses, `B` saves, `H` shows the keys, `O` switches the
+  script off.
 - **To change one key**, click its row and press the new key. A key already in use
   moves over.
 - **Numpad (default)** puts everything back.

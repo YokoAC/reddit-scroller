@@ -64,6 +64,12 @@ describe("labelFor", () => {
 });
 
 describe("parseStored", () => {
+  it("leaves save unbound when a stored binding already uses Num 3", () => {
+    const parsed = parseStored({ next: { code: "Numpad3", label: "Num 3" } });
+    expect(parsed.next.code).toBe("Numpad3");
+    expect(parsed.save).toBeNull();
+  });
+
   const numpad = fromPreset("numpad");
 
   it("gives the numpad preset when nothing is stored", () => {

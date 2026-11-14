@@ -37,7 +37,8 @@
     help: { feed: "toggleHelp", thread: "toggleHelp" },
     standby: { feed: "toggleStandby", thread: "toggleStandby" },
     image_prev: { feed: "imagePrev", thread: "imagePrev" },
-    image_next: { feed: "imageNext", thread: "imageNext" }
+    image_next: { feed: "imageNext", thread: "imageNext" },
+    save: { feed: "savePost", thread: "savePost" }
   };
   function resolveAction(command, mode) {
     const byMode = ACTIONS[command];
@@ -56,7 +57,10 @@
     NumpadMultiply: "help",
     Numpad1: "standby",
     Numpad4: "image_prev",
-    Numpad6: "image_next"
+    Numpad6: "image_next",
+    // Last: parseStored resolves clashes in this order, so a stored binding
+    // that already uses Numpad3 keeps it and save starts unbound.
+    Numpad3: "save"
   };
   var DEFAULT_BINDINGS = {
     toggle: "numpad0",
@@ -70,7 +74,8 @@
     help: "numpad_star",
     standby: "numpad1",
     image_prev: "numpad4",
-    image_next: "numpad6"
+    image_next: "numpad6",
+    save: "numpad3"
   };
 
   // src/bindings.js
@@ -92,7 +97,8 @@
       help: "KeyH",
       standby: "KeyO",
       image_prev: "ArrowLeft",
-      image_next: "ArrowRight"
+      image_next: "ArrowRight",
+      save: "KeyB"
     }
   };
   var COMMANDS = Object.keys(PRESETS.numpad);
@@ -456,6 +462,7 @@
     ["prev", "previous post / page up"],
     ["image_prev", "previous image in a gallery"],
     ["image_next", "next image in a gallery"],
+    ["save", "save post for later"],
     ["open", "open selected post"],
     ["back", "back to the feed"],
     ["help", "show or hide the key list"],
@@ -875,6 +882,25 @@
       this.render();
     }
   };
+
+  // src/save.js
+  var ITEM = '#post-overflow-save [role="menuitem"]';
+  var RESAVE_GUARD_MS = 5e3;
+  var lastSaved = /* @__PURE__ */ new WeakMap();
+  function savePost(post, now = Date.now()) {
+    if (!post) return "can't save";
+    const item = deepQuery(post, ITEM);
+    if (!item) return "can't save";
+    const label = item.textContent.trim();
+    if (label === "Remove from saved") return "already saved";
+    if (label !== "Save") return "can't save";
+    if (now - (lastSaved.get(post) ?? -Infinity) < RESAVE_GUARD_MS) {
+      return "already saved";
+    }
+    item.click();
+    lastSaved.set(post, now);
+    return "saved";
+  }
 
   // src/scroll.js
   var MAX_FRAME_SECONDS = 0.1;
@@ -1389,6 +1415,9 @@
       },
       imageNext() {
         stepGallery(galleryPost(), "next");
+      },
+      savePost() {
+        flash(savePost(galleryPost()));
       },
       noop() {
       }

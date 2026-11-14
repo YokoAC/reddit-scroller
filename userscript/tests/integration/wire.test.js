@@ -287,6 +287,7 @@ describe("the settings contract", () => {
         "open",
         "prev",
         "reverse",
+        "save",
         "slower",
         "standby",
         "toggle",

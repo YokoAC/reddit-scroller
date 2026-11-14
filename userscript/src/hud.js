@@ -144,6 +144,7 @@ export const HELP_ORDER = [
   ["prev", "previous post / page up"],
   ["image_prev", "previous image in a gallery"],
   ["image_next", "next image in a gallery"],
+  ["save", "save post for later"],
   ["open", "open selected post"],
   ["back", "back to the feed"],
   ["help", "show or hide the key list"],

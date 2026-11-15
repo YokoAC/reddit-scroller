@@ -226,6 +226,20 @@ A key the user already chose wins over the new default, on both sides: a
 and save starts unbound there. The daemon used to reject any key bound twice,
 default or not, which would have stopped such a config from loading at all.
 
+### Animations: brief, and none without motion
+
+Motion is feedback, never decoration: each animation marks a change the user
+caused, lasts at most a second, and is switched off by
+`prefers-reduced-motion`. The save ripple is the longest. A newly selected
+post's outline starts wider and settles onto it; a HUD message fades out
+instead of vanishing; standby fades the HUD to its dimmed state.
+
+The outline animates its offset, not its colour, because the highlight's
+`!important` colour would override any animation of it. Standby's collapse to
+one row stays instant, since a transition to an automatic size needs layout
+tricks. The speed bar does not fill smoothly: it is text, and a drawn bar would
+change its look.
+
 ### Rebinding: one panel for both halves
 
 The defaults are numpad keys, and a keyboard without a numpad could not use the

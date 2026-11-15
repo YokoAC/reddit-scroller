@@ -28,6 +28,7 @@ const CSS = `
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   user-select: none;
+  transition: opacity 500ms ease-out;
 }
 #${HUD_ID} .rs-row {
   display: flex;
@@ -92,6 +93,8 @@ const CSS = `
   overflow: hidden;
 }
 #${HUD_ID} .rs-flash { font-size: 14px; color: #58a6ff; min-height: 19px; }
+/* Fades out only: a new message appears at once. */
+#${HUD_ID} .rs-flash-out { opacity: 0; transition: opacity 500ms ease-out; }
 #${HUD_ID} .rs-help {
   margin-top: 9px;
   padding-top: 9px;
@@ -113,20 +116,26 @@ const CSS = `
   outline: 3px solid #58a6ff !important;
   outline-offset: 2px;
   border-radius: 8px;
+  animation: rs-select 180ms ease-out;
+}
+@keyframes rs-select {
+  from { outline-offset: 8px; }
 }
 /* The outline turns green while a ring ripples out from it. box-shadow, since
-   the outline's !important would beat an animation of the outline itself. */
+   the outline's !important would beat an animation of the outline itself.
+   rs-select stays in the list so dropping the class does not replay it. */
 .${SAVED_CLASS} {
   outline-color: #3fb950 !important;
   border-radius: 8px;
-  animation: rs-saved ${SAVED_FLASH_MS}ms ease-out;
+  animation: rs-select 180ms ease-out, rs-saved ${SAVED_FLASH_MS}ms ease-out;
 }
 @keyframes rs-saved {
   from { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
   to { box-shadow: 0 0 0 19px rgba(63, 185, 80, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .${SAVED_CLASS} { animation: none; }
+  .${HIGHLIGHT_CLASS}, .${SAVED_CLASS} { animation: none; }
+  #${HUD_ID}, #${HUD_ID} .rs-flash-out { transition: none; }
 }
 `;
 
@@ -365,7 +374,9 @@ export class Hud {
     n.mode.textContent = view.mode;
     n.sub.textContent = view.subreddit;
     n.title.textContent = view.title;
-    n.flash.textContent = view.flash;
+    // An empty message keeps the old text, so it can fade out under the class.
+    if (view.flash) n.flash.textContent = view.flash;
+    n.flash.classList.toggle("rs-flash-out", !view.flash);
     this._renderHelp(state);
   }
 

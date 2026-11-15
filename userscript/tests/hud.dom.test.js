@@ -26,6 +26,25 @@ describe("Hud", () => {
     expect(document.querySelectorAll("style#rs-style")).toHaveLength(1);
   });
 
+  it("fades a message out rather than blanking it", () => {
+    const hud = new Hud(document);
+    hud.mount();
+    const flash = document.querySelector(`#${HUD_ID} .rs-flash`);
+
+    hud.render({ ...STATE, lastCommand: "saved" });
+    expect(flash.textContent).toBe("SAVED");
+    expect(flash.classList.contains("rs-flash-out")).toBe(false);
+
+    // The text stays for the fade to show; the class does the hiding.
+    hud.render(STATE);
+    expect(flash.textContent).toBe("SAVED");
+    expect(flash.classList.contains("rs-flash-out")).toBe(true);
+
+    hud.render({ ...STATE, lastCommand: "faster" });
+    expect(flash.textContent).toBe("FASTER");
+    expect(flash.classList.contains("rs-flash-out")).toBe(false);
+  });
+
   it("collapses to the top row on standby and expands again after", () => {
     const hud = new Hud(document);
     hud.mount();

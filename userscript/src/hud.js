@@ -28,7 +28,7 @@ const CSS = `
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   user-select: none;
-  transition: opacity 200ms ease-out;
+  transition: opacity 750ms ease-out;
 }
 #${HUD_ID} .rs-row {
   display: flex;
@@ -94,7 +94,7 @@ const CSS = `
 }
 #${HUD_ID} .rs-flash { font-size: 14px; color: #58a6ff; min-height: 19px; }
 /* Fades out only: a new message appears at once. */
-#${HUD_ID} .rs-flash-out { opacity: 0; transition: opacity 250ms ease-out; }
+#${HUD_ID} .rs-flash-out { opacity: 0; transition: opacity 750ms ease-out; }
 #${HUD_ID} .rs-help {
   margin-top: 9px;
   padding-top: 9px;
